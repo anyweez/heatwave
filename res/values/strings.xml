@@ -1,0 +1,14 @@
+<resources>
+
+    <string name="app_name">Heatwave</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="menu_settings">Settings</string>
+    <string name="title_activity_friend_list">Heatwave</string>
+    <string name="menu_waves">Manage Waves</string>
+    <string name="menu_contacts">Manage Contacts</string>
+    <string name="title_display_wave_list">Waves</string>
+    <string name="menu_new_wave">Create Wave</string>
+    <string name="title_edit_wave">Modify Wave</string>
+    <string name="title_select_contacts">Select Contacts</string>
+
+</resources>

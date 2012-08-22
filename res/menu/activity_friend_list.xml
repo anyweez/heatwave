@@ -1,0 +1,16 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android" >
+
+    <item
+        android:id="@+id/menu_contacts"
+        android:orderInCategory="10"
+        android:title="@string/menu_contacts"/>
+    <item
+        android:id="@+id/menu_waves"
+        android:orderInCategory="50"
+        android:title="@string/menu_waves"/>
+    <item
+        android:id="@+id/menu_settings"
+        android:orderInCategory="100"
+        android:title="@string/menu_settings"/>
+
+</menu>

@@ -1,0 +1,6 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android" >
+    <item
+        android:id="@+id/menu_new_wave"
+        android:orderInCategory="100"
+        android:title="@string/menu_new_wave"/>
+</menu>
