@@ -51,15 +51,21 @@ public class Wave {
 	//////////////////////////////
 	public static Wave create(String name, int wl) {
 		initDb();
+
+		// If the wave already exists, return an instance of that
+		// object and do not create a new row in the database.
+		Wave exists = database.loadWaveByName(name);
+		if (exists != null) return exists;
 		
 		Wave w = new Wave();
 		Wave.Fields wf = w.new Fields();
 		
 		wf.setName(name);
 		wf.setWavelength(wl);
-		
-		w.modify(wf);
-		
+
+		w.modify(wf, false);
+		database.addWave(w);
+
 		return w;
 	}
 	

@@ -17,8 +17,10 @@ import android.provider.Contacts.People;
 import android.provider.ContactsContract;
 import android.provider.ContactsContract.CommonDataKinds.Phone;
 import android.provider.ContactsContract.Data;
+import android.provider.ContactsContract.RawContacts;
 import android.util.Log;
 
+// TODO: Make sure nothing crashes if a Contact is deleted from the Android contact list.
 public class HeatwaveDatabase {
 	private static final String TAG = "HeatwaveDatabase";
 	private static final int DURATION_THRESHOLD = 4;
@@ -37,7 +39,7 @@ public class HeatwaveDatabase {
 	 */
 	private static class HeatwaveOpenHelper extends SQLiteOpenHelper {
 		// TODO: Clean up these constants. Many may not be needed anymore.
-		private static final int DATABASE_VERSION = 1;
+		private static final int DATABASE_VERSION = 2;
 		private static final String DATABASE_NAME = "heatwave";
 		private static final String WAVE_TABLE_NAME = "waves";
 		private static final String CONTACTS_TABLE_NAME = "contacts";
@@ -54,10 +56,11 @@ public class HeatwaveDatabase {
 		private static final String CONTACTS_TABLE_CREATE = "CREATE TABLE "
 				+ CONTACTS_TABLE_NAME
 				+ " (_id INTEGER PRIMARY KEY AUTOINCREMENT, " + // primary key
-				"uid INTEGER, " + // system-level user ID (Android contact ID)
-				"wave INTEGER)"; // foreign key to the wave table. Contacts can
+				"uid INTEGER, " +   // system-level user ID (Android contact ID)
+				"wave INTEGER," +   // foreign key to the wave table. Contacts can
 									// only
 									// be in one wave at a time.
+				"timestamp TEXT)";
 
 //		private static final String EVENTLOG_TABLE_CREATE = "CREATE TABLE "
 //				+ EVENTLOG_TABLE_NAME
@@ -264,15 +267,26 @@ public class HeatwaveDatabase {
 	
 	public long updateTimestamp(int adrId) {
 		// Get all of the phone numbers for the contact.
+		StringBuilder contactQuery = new StringBuilder();
+		ArrayList<Long> rawIds = getRawContacts(adrId);
+		String[] rawStr = new String[rawIds.size()];
+		
+		contactQuery.append("(");
+		for (int i = 0; i < rawIds.size(); i++) {
+			contactQuery.append(Data.RAW_CONTACT_ID + " = ?");
+			rawStr[i] = String.valueOf(rawIds.get(i));
+			
+			if (i != rawIds.size() - 1) contactQuery.append(" OR ");
+		}
+		contactQuery.append(")");
+		
 		Cursor c = context.getContentResolver().query(Data.CONTENT_URI, 
 			new String[] {
 				Phone.NUMBER,
 			},
-			Data.RAW_CONTACT_ID + " = ? AND " + Data.MIMETYPE + 
+			contactQuery.toString() + " AND " + Data.MIMETYPE + 
 			" = '" + Phone.CONTENT_ITEM_TYPE + "'",
-			new String[] {
-				String.valueOf(adrId)
-			},
+			rawStr,
 			null
 		);
 		
@@ -285,15 +299,21 @@ public class HeatwaveDatabase {
 		phoneNumQry.append(CallLog.Calls.TYPE + " != " + CallLog.Calls.MISSED_TYPE + " AND ");
 		
 		// There will be at least one phone number for the user because Heatwave
-		// doesn't let you add users that you don't have phone numbers for.
-		// TODO: Check to make sure this is true ^.
+		// doesn't let you add users that you don't have phone numbers for (see
+		// SelectContactsActivity.loadAdrContacts().
 		c.moveToFirst();
+		
+		// If no phone numbers exist then return zero (it is impossible that
+		// they are a contact that we've contacted on this device).
+		if (c.isAfterLast()) return 0;
+		
 		while (!c.isAfterLast()) {
 			phoneNumQry.append(CallLog.Calls.NUMBER + " = " + c.getString(0).replace("-", ""));
 			c.moveToNext();
 			
 			if (!c.isAfterLast()) phoneNumQry.append(" OR ");
 		}
+		Log.i(TAG, phoneNumQry.toString());
 		
 		// Scan through the call log for recent calls.
 		Cursor callCursor = context.getContentResolver().query(
@@ -324,6 +344,23 @@ public class HeatwaveDatabase {
 		
 		callCursor.close();
 		return lastCall;
+	}
+	
+	public ArrayList<Long> getRawContacts(int adrId) {
+		Cursor c = context.getContentResolver().query(RawContacts.CONTENT_URI, 
+			new String[] { RawContacts._ID }, 
+			RawContacts.CONTACT_ID + " = ?", 
+			new String[] { String.valueOf(adrId) }, null);
+		
+		ArrayList<Long> raws = new ArrayList<Long>();
+		
+		c.moveToFirst();
+		while (!c.isAfterLast()) {
+			raws.add(c.getLong(0));
+			c.moveToNext();
+		}
+		
+		return raws;
 	}
 	
 	public ArrayList<Contact> fetchContacts() {
@@ -386,7 +423,7 @@ public class HeatwaveDatabase {
 		return database.insert(HeatwaveOpenHelper.WAVE_TABLE_NAME, null,
 				newWave.cv()) != -1;
 	}
-
+	
 	public Wave fetchWave(int waveId) {
 		SQLiteQueryBuilder qBuilder = new SQLiteQueryBuilder();
 		qBuilder.setTables(HeatwaveOpenHelper.WAVE_TABLE_NAME);
@@ -459,6 +496,18 @@ public class HeatwaveDatabase {
 		c.close();
 		
 		return count;
+	}
+	
+	public Wave loadWaveByName(String name) {
+		Cursor c = database.query(HeatwaveOpenHelper.WAVE_TABLE_NAME,
+				new String[] { "_id" }, 
+				"name = ?", 
+				new String[] { String.valueOf(name) }, 
+				null, null, null);
+		
+		c.moveToFirst();
+		if (c.isAfterLast()) return null;
+		else return fetchWave(c.getInt(0));
 	}
 
 	public ArrayList<Wave> fetchWaves() {

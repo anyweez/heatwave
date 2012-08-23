@@ -7,7 +7,6 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.ContactsContract;
-import android.util.Log;
 import android.util.SparseBooleanArray;
 import android.view.View;
 import android.widget.ArrayAdapter;
@@ -43,7 +42,6 @@ public class WaveMemberActivity extends ListActivity {
 				for (int i = 0; i < arr.size(); i++) {
 					int itemId = arr.keyAt(i);
 
-					Log.i(TAG, "ITEM #" + itemId + ": " + arr.valueAt(i));
 					if (arr.valueAt(i)) actives.add(contactIds.get(itemId));
 					else inactives.add(contactIds.get(itemId));
 				}
