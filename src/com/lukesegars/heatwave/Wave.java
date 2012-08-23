@@ -1,52 +1,139 @@
 package com.lukesegars.heatwave;
 
 import android.content.ContentValues;
+import android.content.Context;
 
 public class Wave {
 	public static final int SECONDS_PER_UNIT = 86400;
 	
-	private int wave_id;
-	private String name;
-	private int wave_length;
+	public class Fields {
+		private static final int DEFAULT_ID = -1;
+//		private static final String DEFAULT_NAME = "";
+		private static final int DEFAULT_WAVELENGTH = -1;
+		
+		private int id = DEFAULT_ID;
+		private String name = null;
+		private int waveLength = DEFAULT_WAVELENGTH;
+		
+		public int getId() { return id; }
+		public void setId(int i) { id = i; }
+		
+		public String getName() { return name; }
+		public void setName(String n) { name = n; }
+		
+		public int getWavelength() { return waveLength; }
+		public void setWavelength(int wl) { waveLength = wl; }
+		
+		protected void modify(Wave.Fields f) {
+			if (f.getId() != DEFAULT_ID) setId(f.getId());
+			if (f.getName() != null) setName(f.getName());
+			if (f.getWavelength() != DEFAULT_WAVELENGTH) setWavelength(f.getWavelength());
+		}
+	}
+
+	private static HeatwaveDatabase database;
+	private static Context context = null;
 	
-	private HeatwaveDatabase db;
+	private Wave.Fields fields = new Wave.Fields();
 	
-	public Wave(String n, int wl) {
-		name = n;
-		wave_length = wl;
+	private static void initDb() {
+		if (database == null) {
+			database = HeatwaveDatabase.getInstance(context);
+		}
+	}
+
+	public static void setContext(Context c) {
+		context = c;
 	}
 	
-	public Wave(String n, int wl, int wid) {
-		name = n;
-		wave_length = wl;
-		wave_id = wid;
+	//////////////////////////////
+	/// Static factory methods ///
+	//////////////////////////////
+	public static Wave create(String name, int wl) {
+		initDb();
+		
+		Wave w = new Wave();
+		Wave.Fields wf = w.new Fields();
+		
+		wf.setName(name);
+		wf.setWavelength(wl);
+		
+		w.modify(wf);
+		
+		return w;
 	}
+	
+	public static Wave load(int id) {
+		initDb();
+		
+		return database.fetchWave(id);
+	}
+	
+	public static Wave skeleton() {
+		return new Wave();
+	}
+	
+	////////////////////////////
+	/// Private constructors ///
+	////////////////////////////
+	
+	private Wave() {}
+	
+	private Wave(Wave.Fields f) {
+		fields = f;
+	}
+	
+	//////////////////////
+	/// Public methods ///
+	//////////////////////
+	public void modify(Wave.Fields f, boolean updateDb) {
+		initDb();
+		fields.modify(f);
+		
+		// Update the database records if requested (default = true).
+		if (updateDb) database.updateWave(this);
+	}
+	
+	public void modify(Wave.Fields f) {
+		modify(f, true);
+	}
+	
+//	public Wave(String n, int wl) {
+//		name = n;
+//		wave_length = wl;
+//	}
+//	
+//	public Wave(String n, int wl, int wid) {
+//		name = n;
+//		wave_length = wl;
+//		wave_id = wid;
+//	}
 	
 	public int getId() {
-		return wave_id;
+		return fields.getId();
 	}
 	
 	public String getName() {
-		return name;
+		return fields.getName();
 	}
 	
 	public int getWaveLength() {
-		return wave_length;
+		return fields.getWavelength();
 	}
 	
-	public void setName(String n) {
-		name = n;
-	}
-	
-	public void setWaveLength(int wl) {
-		wave_length = wl;
-	}
+//	public void setName(String n) {
+//		name = n;
+//	}
+//	
+//	public void setWaveLength(int wl) {
+//		wave_length = wl;
+//	}
 	
 	public ContentValues cv() {
 		ContentValues cv = new ContentValues();
 		
-		cv.put("name", name);
-		cv.put("wavelength", wave_length);
+		cv.put("name", fields.getName());
+		cv.put("wavelength", fields.getWavelength());
 		
 		return cv;
 	}
@@ -55,8 +142,10 @@ public class Wave {
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((name == null) ? 0 : name.hashCode());
-		result = prime * result + wave_length;
+		result = prime * result + 
+			((fields.getName() == null) ? 0 : fields.getName().hashCode());
+		result = prime * result + fields.getWavelength();
+		
 		return result;
 	}
 
@@ -78,18 +167,19 @@ public class Wave {
 		
 		Wave other = (Wave) obj;
 		
-		if (name == null) {
-			if (other.name != null)
+		if (fields.getName() == null) {
+			if (other.getName() != null)
 				return false;
-		} else if (!name.equals(other.name))
+		} else if (!getName().equals(other.getName()))
 			return false;
-		if (wave_length != other.wave_length)
+		if (fields.getWavelength() != other.fields.getWavelength())
 			return false;
 		return true;
 	}
 
 	@Override
 	public String toString() {
-		return "Wave '" + name + "', wavelength: " + String.valueOf(wave_length);
+		return "Wave '" + fields.getName() + 
+			"', wavelength: " + String.valueOf(fields.getWavelength());
 	}
 }

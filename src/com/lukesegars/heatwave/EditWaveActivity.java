@@ -62,17 +62,20 @@ public class EditWaveActivity extends Activity {
 				// If we're creating a wave (not editing a pre-existing one).
 				if (target == null) {
 					// Save the new wave to the database 
-					db.addWave(new Wave(
-						name_field.getText().toString(), 
-						Wave.SECONDS_PER_UNIT * Integer.parseInt(wl_field.getText().toString())
-					));
+					int waveDays = Integer.parseInt(wl_field.getText().toString());
+
+					// Create the wave.
+					Wave.create(name_field.getText().toString(), waveDays * Wave.SECONDS_PER_UNIT);
 				}
 				// If we're editing a pre-existing one.
 				else {
-					target.setName(name_field.getText().toString());
-					target.setWaveLength(Wave.SECONDS_PER_UNIT * Integer.parseInt(wl_field.getText().toString()));
+					Wave.Fields wf = target.new Fields();
+					int waveDays = Integer.parseInt(wl_field.getText().toString());
 					
-					database.updateWave(target);
+					wf.setName(name_field.getText().toString());
+					wf.setWavelength(waveDays * Wave.SECONDS_PER_UNIT);
+					
+					target.modify(wf);
 				}
 				
 				finish();

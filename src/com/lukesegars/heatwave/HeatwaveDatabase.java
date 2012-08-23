@@ -2,6 +2,7 @@ package com.lukesegars.heatwave;
 
 import java.util.ArrayList;
 
+import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
@@ -12,12 +13,15 @@ import android.database.sqlite.SQLiteDatabase.CursorFactory;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.net.Uri;
 import android.provider.CallLog;
+import android.provider.Contacts.People;
 import android.provider.ContactsContract;
 import android.provider.ContactsContract.CommonDataKinds.Phone;
+import android.provider.ContactsContract.Data;
 import android.util.Log;
 
 public class HeatwaveDatabase {
 	private static final String TAG = "HeatwaveDatabase";
+	private static final int DURATION_THRESHOLD = 4;
 
 	// SQLite database helper (local class)
 	private HeatwaveOpenHelper dbHelper;
@@ -37,14 +41,15 @@ public class HeatwaveDatabase {
 		private static final String DATABASE_NAME = "heatwave";
 		private static final String WAVE_TABLE_NAME = "waves";
 		private static final String CONTACTS_TABLE_NAME = "contacts";
-		private static final String EVENTLOG_TABLE_NAME = "eventlog";
+//		private static final String EVENTLOG_TABLE_NAME = "eventlog";
 
 		private static final String WAVE_TABLE_CREATE = "CREATE TABLE "
 				+ WAVE_TABLE_NAME + " (_id INTEGER PRIMARY KEY AUTOINCREMENT, "
 				+ // primary key
 				"name TEXT, " + // name of the wave
-				"wavelength INTEGER)"; // the amount of time between contact (in
+				"wavelength INTEGER, " + // the amount of time between contact (in
 										// seconds)
+				"lastContact TEXT)";
 
 		private static final String CONTACTS_TABLE_CREATE = "CREATE TABLE "
 				+ CONTACTS_TABLE_NAME
@@ -54,10 +59,10 @@ public class HeatwaveDatabase {
 									// only
 									// be in one wave at a time.
 
-		private static final String EVENTLOG_TABLE_CREATE = "CREATE TABLE "
-				+ EVENTLOG_TABLE_NAME
-				+ " (_id INTEGER PRIMARY KEY AUTOINCREMENT, "
-				+ "event_type TEXT, " + "uid INTEGER, " + "timestamp DATETIME)";
+//		private static final String EVENTLOG_TABLE_CREATE = "CREATE TABLE "
+//				+ EVENTLOG_TABLE_NAME
+//				+ " (_id INTEGER PRIMARY KEY AUTOINCREMENT, "
+//				+ "event_type TEXT, " + "uid INTEGER, " + "timestamp DATETIME)";
 
 		public HeatwaveOpenHelper(Context context) {
 			super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -70,14 +75,14 @@ public class HeatwaveDatabase {
 		public void onCreate(SQLiteDatabase db) {
 			db.execSQL(WAVE_TABLE_CREATE);
 			db.execSQL(CONTACTS_TABLE_CREATE);
-			db.execSQL(EVENTLOG_TABLE_CREATE);
+//			db.execSQL(EVENTLOG_TABLE_CREATE);
 		}
 
 		@Override
 		public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
 			db.execSQL("DROP TABLE IF EXISTS " + WAVE_TABLE_NAME);
 			db.execSQL("DROP TABLE IF EXISTS " + CONTACTS_TABLE_NAME);
-			db.execSQL("DROP TABLE IF EXISTS " + EVENTLOG_TABLE_NAME);
+//			db.execSQL("DROP TABLE IF EXISTS " + EVENTLOG_TABLE_NAME);
 
 			onCreate(db);
 		}
@@ -113,35 +118,41 @@ public class HeatwaveDatabase {
 		return this;
 	}
 
-	// public void close() {
-	// dbHelper.close();
-	// }
+	///////////////////////////////////
+	//// Contact-related methods //////
+	///////////////////////////////////
 
-	// ///////////////////////////////////
-	// //// Contact-related methods //////
-	// ///////////////////////////////////
-
-	public boolean addContact(Contact newContact) {
-		return database.insert(HeatwaveOpenHelper.CONTACTS_TABLE_NAME, null,
-				newContact.cv()) != -1;
+	public Contact addContact(Contact newContact) {
+		database.insert(HeatwaveOpenHelper.CONTACTS_TABLE_NAME, 
+			null, newContact.cv());
+		
+		return fetchContact(newContact.getAdrId());
 	}
 
-	public boolean addContacts(ArrayList<Contact> contacts) {
-		boolean errors = false;
+	public void addContacts(ArrayList<Contact> contacts) {
 		for (Contact c : contacts) {
-			if (!addContact(c))
-				errors = true;
+			addContact(c);
 		}
-
-		return errors;
+	}
+	
+	public boolean contactExists(int adrId) {
+		Cursor c = database.query(HeatwaveOpenHelper.CONTACTS_TABLE_NAME, 
+			new String[] { "_id" }, 
+			"uid = ?", 
+			new String[] { String.valueOf(adrId) }, 
+			null, null, null);
+		
+		boolean exists = c.getCount() > 0;
+		c.close();
+		
+		return exists;
 	}
 
 	public void updateContact(Contact c) {
-		String[] selectionArgs = new String[] { String.valueOf(c.getContactId()) };
 		database.update(HeatwaveOpenHelper.CONTACTS_TABLE_NAME, 
 			c.cv(), 
 			"_id = ?", 
-			selectionArgs);
+			new String[] { String.valueOf(c.getContactId()) });
 	}
 	
 	public ArrayList<Integer> getActiveContactIds() {
@@ -194,22 +205,40 @@ public class HeatwaveDatabase {
 		return errors;
 	}
 	
-	public Contact fetchContact(int contactId) {
+	// TODO: merge fetchContact and fetchContacts to share a lot of this code.
+	public Contact fetchContact(int adrId) {
 		// Get the list of contacts from the Heatwave database.
 		SQLiteQueryBuilder qBuilder = new SQLiteQueryBuilder();
 		qBuilder.setTables(HeatwaveOpenHelper.CONTACTS_TABLE_NAME);
 
-		String[] local_projection = { "_id", "uid", "wave" };
-
-		// TODO: merge fetchContact and fetchContacts to share a lot of this code.
-		String selection = (contactId >= 0) ? "uid = ?" : null;
-		String[] selectionArgs = (contactId >= 0) ? new String[] { String.valueOf(contactId) } : null;
+		Contact c = Contact.skeleton();
+		Contact.Fields cf = c.new Fields();
+		
+		// Update the timestamp of the most recent call for this user before
+		// requesting that information from the database.
+		
 		Cursor cursor = qBuilder.query(database, 
-				local_projection, 
-				selection, 
-				selectionArgs,
-				null, null, null);
+			new String[] { "_id", "uid", "wave" }, 
+			"uid = ?", 
+			new String[] { String.valueOf(adrId) },
+			null, null, null);
 
+		cursor.moveToFirst();
+
+		// Return null if the contact doesn't exist.
+		if (cursor.isAfterLast()) return null;
+		
+		cf.setCid(cursor.getInt(0));
+		cf.setAdrId(cursor.getInt(1));
+		cf.setWave(fetchWave(cursor.getInt(2)));
+		cf.setLatestTimestamp(updateTimestamp(adrId));
+//		cf.setLatestTimestamp(Integer.parseInt(cursor.getString(3)));
+		
+		cursor.close();
+		///////////////////////////////////////////////////////////////////
+		// Get some contact information from the Android contact tables. //
+		///////////////////////////////////////////////////////////////////
+		
 		// Some parameters for the system-wide contact lookups.
 		Uri uri = ContactsContract.Contacts.CONTENT_URI;
 		String[] adr_projection = new String[] { 
@@ -217,80 +246,92 @@ public class HeatwaveDatabase {
 			ContactsContract.Contacts.DISPLAY_NAME 
 		};
 
-		// All future queries will be made to the event log table.
-		qBuilder.setTables(HeatwaveOpenHelper.EVENTLOG_TABLE_NAME);
-		cursor.moveToFirst();
-
-		// Return null if the contact doesn't exist.
-		if (cursor.isAfterLast()) return null;
-		
-//		while (!cursor.isAfterLast()) {
-		int user_id = cursor.getInt(0);
-		int adr_user_id = cursor.getInt(1);
-		int wave_id = cursor.getInt(2);
-
-		// Query to find the contact's name
+		// Query to find the contact's name from the Android contact registry.
 		Cursor adrCursor = context.getContentResolver().query(uri,
 			adr_projection, "_id = ?", 
-			new String[] { String.valueOf(adr_user_id) }, 
+			new String[] { String.valueOf(cf.getAdrId()) }, 
 			null);
 			
 		adrCursor.moveToFirst();
-		String name = adrCursor.getString(1);
-
-		// Get the timestamp of the most recent call with the
-		// contact.
-		String[] call_projection = new String[] {
-			"timestamp"
-		};
-			
-//		Cursor callCursor = qBuilder.query(database, 
-//			call_projection, 
-//			"uid = ?", 
-//			new String[] { String.valueOf(adr_user_id) }, 
-//			null, 
-//			null, 
-//			"timestamp DESC", 
-//			"1");
-			
-		Contact contact = new Contact(name, fetchWave(wave_id), adr_user_id, user_id);
-		contact.setLastCallTimestamp(getLastCallTimestamp(contact));
-			
+		cf.setName(adrCursor.getString(1));
+		
 		// Clean up.
 		adrCursor.close();
-			
-		return contact;
+		c.modify(cf, false);
+		
+		return c;
 	}
 	
-	public int getLastCallTimestamp(Contact c) {
+	public long updateTimestamp(int adrId) {
+		// Get all of the phone numbers for the contact.
+		Cursor c = context.getContentResolver().query(Data.CONTENT_URI, 
+			new String[] {
+				Phone.NUMBER,
+			},
+			Data.RAW_CONTACT_ID + " = ? AND " + Data.MIMETYPE + 
+			" = '" + Phone.CONTENT_ITEM_TYPE + "'",
+			new String[] {
+				String.valueOf(adrId)
+			},
+			null
+		);
+		
+		// Build a query string with all of the phone numbers.
+		StringBuilder phoneNumQry = new StringBuilder();
+		
+		// The call must meet the minimum duration requirement.
+		phoneNumQry.append(CallLog.Calls.DURATION + " >= " + DURATION_THRESHOLD + " AND ");
+		// The call must not be missed (either incoming or outgoing and received)
+		phoneNumQry.append(CallLog.Calls.TYPE + " != " + CallLog.Calls.MISSED_TYPE + " AND ");
+		
+		// There will be at least one phone number for the user because Heatwave
+		// doesn't let you add users that you don't have phone numbers for.
+		// TODO: Check to make sure this is true ^.
+		c.moveToFirst();
+		while (!c.isAfterLast()) {
+			phoneNumQry.append(CallLog.Calls.NUMBER + " = " + c.getString(0).replace("-", ""));
+			c.moveToNext();
+			
+			if (!c.isAfterLast()) phoneNumQry.append(" OR ");
+		}
+		
+		// Scan through the call log for recent calls.
 		Cursor callCursor = context.getContentResolver().query(
 			android.provider.CallLog.Calls.CONTENT_URI, 
 			new String[] {
-				CallLog.Calls.NUMBER,
-				CallLog.Calls.DURATION,
 				CallLog.Calls.DATE,
-				CallLog.Calls.TYPE 
 			}, 
-			null, 
-			null, android.provider.CallLog.Calls.DATE + " DESC");
+			phoneNumQry.toString(), 
+			null,
+			android.provider.CallLog.Calls.DATE + " DESC LIMIT 1");
 
 		callCursor.moveToFirst();
-		while (!callCursor.isAfterLast()) {
-			String num = callCursor.getString(0);
-			String dur = callCursor.getString(1);
-			Log.i(TAG, "Call from " + num + " that lasted " + dur + " seconds.");
-			callCursor.moveToNext();
-		}
 
+		// If there are no call records then either the user has never called 
+		// them or its been so long that it fell off the end of the logs.
+		// Either way we're stuck with assuming they've never called.
+		if (callCursor.isAfterLast()) return 0;
+
+		long lastCall = (Long.parseLong(callCursor.getString(0)) / 1000);
+
+		// Save the new timestamp as the most recent one.
+		ContentValues cv = new ContentValues();
+		cv.put("timestamp", lastCall);
+		database.update(HeatwaveOpenHelper.CONTACTS_TABLE_NAME, 
+			cv, 
+			"uid = ?", 
+			new String[] { String.valueOf(adrId) });
+		
 		callCursor.close();
-		return 0;
+		return lastCall;
 	}
+	
 	public ArrayList<Contact> fetchContacts() {
 		// Get the list of contacts from the Heatwave database.
 		SQLiteQueryBuilder qBuilder = new SQLiteQueryBuilder();
 		qBuilder.setTables(HeatwaveOpenHelper.CONTACTS_TABLE_NAME);
 
-		String[] local_projection = { "_id", "uid", "wave" };
+		String[] local_projection = { "_id", "uid", "wave", "timestamp" };
 
 		Cursor cursor = qBuilder.query(database, local_projection, null, null,
 				null, null, null);
@@ -303,53 +344,37 @@ public class HeatwaveDatabase {
 			ContactsContract.Contacts.DISPLAY_NAME 
 		};
 
-		// All future queries will be made to the event log table.
-		qBuilder.setTables(HeatwaveOpenHelper.EVENTLOG_TABLE_NAME);
 		cursor.moveToFirst();
+		
 		while (!cursor.isAfterLast()) {
-			int user_id = cursor.getInt(0);
-			int adr_user_id = cursor.getInt(1);
-			int wave_id = cursor.getInt(2);
+			Contact c = Contact.skeleton();
+			Contact.Fields cf = c.new Fields();
+			
+			cf.setCid(cursor.getInt(0));
+			cf.setAdrId(cursor.getInt(1));
+			cf.setWave(fetchWave(cursor.getInt(2)));
+			// Update the timestamp for each user.
+			cf.setLatestTimestamp(updateTimestamp(cf.getAdrId()));
 
 			// Query to find the contact's name
 			Cursor adrCursor = context.getContentResolver().query(uri,
 					adr_projection, "_id = ?", 
-					new String[] { String.valueOf(adr_user_id) }, 
+					new String[] { String.valueOf(cf.getAdrId()) }, 
 					null);
 			
 			adrCursor.moveToFirst();
-			String name = adrCursor.getString(1);
+			cf.setName(adrCursor.getString(1));
 
-			// Get the timestamp of the most recent call with the
-			// contact.
-			String[] call_projection = new String[] {
-				"timestamp"
-			};
-			
-			Cursor callCursor = qBuilder.query(database, 
-				call_projection, 
-				"uid = ?", 
-				new String[] { String.valueOf(adr_user_id) }, 
-				null, 
-				null, 
-				"timestamp DESC", 
-				"1");
-			
-			Contact contact = new Contact(name, fetchWave(wave_id), adr_user_id);
-			
-			if (callCursor.getCount() > 0) {
-				callCursor.moveToFirst();
-				int timestamp = Integer.parseInt(callCursor.getString(0));
-				contact.setLastCallTimestamp(timestamp);
-			}
-			
 			// Clean up.
 			adrCursor.close();
-			callCursor.close();
 			
-			contacts.add(contact);
+			c.modify(cf, false);
+			contacts.add(c);
+
 			cursor.moveToNext();
 		}
+
+		cursor.close();
 		return contacts;
 	}
 
@@ -362,19 +387,27 @@ public class HeatwaveDatabase {
 				newWave.cv()) != -1;
 	}
 
-	public Wave fetchWave(int wave_id) {
+	public Wave fetchWave(int waveId) {
 		SQLiteQueryBuilder qBuilder = new SQLiteQueryBuilder();
 		qBuilder.setTables(HeatwaveOpenHelper.WAVE_TABLE_NAME);
 
 		String[] projection = { "_id", "name", "wavelength" };
 
 		Cursor cursor = qBuilder.query(database, projection,
-				"_id = " + wave_id, null, null, null, null);
+				"_id = " + waveId, null, null, null, null);
 
 		cursor.moveToFirst();
 		if (!cursor.isAfterLast()) {
-			return new Wave(cursor.getString(1), cursor.getInt(2),
-					cursor.getInt(0));
+			Wave w = Wave.skeleton();
+			Wave.Fields wf = w.new Fields();
+			
+			wf.setId(cursor.getInt(0));
+			wf.setName(cursor.getString(1));
+			wf.setWavelength(cursor.getInt(2));
+			
+			w.modify(wf, false);
+			
+			return w;
 		} else
 			return null;
 	}
@@ -398,11 +431,10 @@ public class HeatwaveDatabase {
 	}
 	
 	public void updateWave(Wave w) {
-		String[] selectionArgs = new String[] { String.valueOf(w.getId()) };
 		database.update(HeatwaveOpenHelper.WAVE_TABLE_NAME, 
 			w.cv(), 
 			"_id = ?", 
-			selectionArgs);
+			new String[] { String.valueOf(w.getId()) });
 	}
 
 	public int getWaveMemberCount(Wave w) {
@@ -442,8 +474,16 @@ public class HeatwaveDatabase {
 
 		cursor.moveToFirst();
 		while (!cursor.isAfterLast()) {
-			waves.add(new Wave(cursor.getString(1), cursor.getInt(2), cursor
-					.getInt(0)));
+			Wave w = Wave.skeleton();
+			Wave.Fields wf = w.new Fields();
+			
+			wf.setName(cursor.getString(1));
+			wf.setWavelength(cursor.getInt(2));
+			wf.setId(cursor.getInt(0));
+			
+			w.modify(wf, false);
+			
+			waves.add(w);
 			cursor.moveToNext();
 		}
 		return waves;
@@ -476,34 +516,34 @@ public class HeatwaveDatabase {
 	/**
 	 * Records a log entry for user identified by the provided phone number.
 	 */
-	public void logCall(String phoneNum) {
-		Uri uri = Uri.withAppendedPath(
-			ContactsContract.PhoneLookup.CONTENT_FILTER_URI, 
-			Uri.encode(phoneNum));
-		
-		String[] projection = new String[] {
-			ContactsContract.PhoneLookup._ID,
-			ContactsContract.PhoneLookup.DISPLAY_NAME
-		};
-		
-		Cursor cur = context.getContentResolver().query(uri,
-			projection,
-			null,
-			null,
-			null);
-		
-		if (cur.getCount() == 0) {
-			Log.w(TAG, "Could not identify user with phone number " + phoneNum);
-		}
-		else {
-			cur.moveToFirst();
-			ContentValues cv = new ContentValues();
-			cv.put("event_type", "call");
-			cv.put("uid", cur.getInt(0));
-			cv.put("timestamp", String.valueOf(System.currentTimeMillis() / 1000));
-		
-			database.insert(HeatwaveOpenHelper.EVENTLOG_TABLE_NAME, null, cv);
-			cur.close();
-		}
-	}
+//	public void logCall(String phoneNum) {
+//		Uri uri = Uri.withAppendedPath(
+//			ContactsContract.PhoneLookup.CONTENT_FILTER_URI, 
+//			Uri.encode(phoneNum));
+//		
+//		String[] projection = new String[] {
+//			ContactsContract.PhoneLookup._ID,
+//			ContactsContract.PhoneLookup.DISPLAY_NAME
+//		};
+//		
+//		Cursor cur = context.getContentResolver().query(uri,
+//			projection,
+//			null,
+//			null,
+//			null);
+//		
+//		if (cur.getCount() == 0) {
+//			Log.w(TAG, "Could not identify user with phone number " + phoneNum);
+//		}
+//		else {
+//			cur.moveToFirst();
+//			ContentValues cv = new ContentValues();
+//			cv.put("event_type", "call");
+//			cv.put("uid", cur.getInt(0));
+//			cv.put("timestamp", String.valueOf(System.currentTimeMillis() / 1000));
+//		
+//			database.insert(HeatwaveOpenHelper.EVENTLOG_TABLE_NAME, null, cv);
+//			cur.close();
+//		}
+//	}
 }

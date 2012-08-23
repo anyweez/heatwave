@@ -9,7 +9,6 @@ import android.os.Handler;
 import android.os.Message;
 import android.app.ListActivity;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -36,6 +35,8 @@ public class FriendListActivity extends ListActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        storeObjectContext();
+        
         setContentView(R.layout.activity_friend_list);
         
         database = HeatwaveDatabase.getInstance(this);
@@ -75,14 +76,10 @@ public class FriendListActivity extends ListActivity {
     	shouldRefresh = false;
     }
     
-//    @Override
-//    public void onStop() {
-//    	super.onStop();
-//    	if (ocr != null) {
-//    		unregisterReceiver(ocr);
-//    		ocr = null;
-//    	}
-//    }
+    private void storeObjectContext() {
+    	Wave.setContext(getApplicationContext());
+    	Contact.setContext(getApplicationContext());
+    }
     
     @Override
     public void onListItemClick(ListView lv, View v, int position, long id) {
@@ -150,8 +147,6 @@ public class FriendListActivity extends ListActivity {
 //    }
     
     private void launchUIRefresher() {
-    	database.getLastCallTimestamp(null);
-    	
     	timer.start();
     }
     
@@ -168,6 +163,7 @@ public class FriendListActivity extends ListActivity {
 					refreshUI.sendEmptyMessage(0);
 				}
 				try {
+					// Update the UI every five seconds.
 					Thread.sleep(5000);
 				} catch (InterruptedException e) {
 					e.printStackTrace();

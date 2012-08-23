@@ -33,15 +33,18 @@ public class SelectContactsActivity extends ListActivity {
 		Button sc_btn = (Button)findViewById(R.id.save_contacts_btn);
 		sc_btn.setOnClickListener(new View.OnClickListener() {
 			public void onClick(View v) {
+				// TODO: Only process deltas (see code in WaveMemberActivity)
 				SparseBooleanArray arr = getListView().getCheckedItemPositions();
 				
 				ArrayList<Integer> actives = new ArrayList<Integer>();
+				ArrayList<Integer> inactives = new ArrayList<Integer>();
 
 				for (int i = 0; i < arr.size(); i++) {
 					int itemId = arr.keyAt(i);
 					if (arr.valueAt(i)) actives.add(contactIds.get(itemId));
+					else inactives.add(contactIds.get(itemId));
 				}
-				updateContacts(actives);
+				updateContacts(actives, inactives);
 				finish();
 			}
 		});
@@ -93,49 +96,19 @@ public class SelectContactsActivity extends ListActivity {
 		// For each active ID, check to see if the contact ID
 		for (int i = 0; i < contactIds.size(); i++) {
 			if (actives.contains(contactIds.get(i))) lv.setItemChecked(i, true);
-			else lv.setItemChecked(i, false);
+//			else lv.setItemChecked(i, false);
 		}
 		
 		adapter.notifyDataSetChanged();
 	}
 
-	private void updateContacts(ArrayList<Integer> actives) {
-		ArrayList<Integer> currentActives = database.getActiveContactAdrIds();
+	private void updateContacts(ArrayList<Integer> actives, ArrayList<Integer> inactives) {
+		// 1. Create a new Contact for each ID.  create() will not create
+		//    a record if one already exists for the user with this ID.
+		for (Integer id : actives) Contact.create(id, null);
 		
-		ArrayList<Integer> additions = new ArrayList<Integer>(actives);
-		ArrayList<Integer> removals = new ArrayList<Integer>(currentActives);
-
-		additions.removeAll(currentActives);
-		removals.removeAll(actives);
-		
-		// 1. Create Contact objects and call db.addContacts()
-//		ArrayList<Contact> addContacts = new ArrayList<Contact>();
-//		for (Integer id : adds) {
-//			addContacts.add(makeContact(id));
-//		}
-		ArrayList<Contact> addContacts = new ArrayList<Contact>();
-		for (Integer id : additions) {
-			addContacts.add(makeContact(id));
-		}
-		Log.i(TAG, "Adding:");
-		for (Contact c : addContacts) {
-			Log.i(TAG, c.toString());
-		}
-		database.addContacts(addContacts);
-		
-		// 2. Create Contact objects and call db.removeContacts()
-		ArrayList<Contact> removeContacts = new ArrayList<Contact>();
-		for (Integer id : removals) {
-			removeContacts.add(makeContact(id));
-		}
-		Log.i(TAG, "Removing:");
-		for (Contact c : removeContacts) {
-			Log.i(TAG, c.toString());
-		}
-		database.removeContacts(removeContacts);
-//		database.removeContacts(removeContacts);
-		
-		// FIXME: Not removing contacts that are unchecked.
+		// 2. Delete all of the Contacts that are no longer on the list.
+		for (Integer id : inactives) Contact.delete(id);
 	}
 	
 	/**
@@ -160,21 +133,21 @@ public class SelectContactsActivity extends ListActivity {
 //		database.removeContacts(removeContacts);
 //	}
 	
-	private Contact makeContact(int contact_id) {
-		Uri uri = ContactsContract.Contacts.CONTENT_URI;
-		String[] projection = new String[] {
-			ContactsContract.Contacts.DISPLAY_NAME
-		};
-		
-		Cursor cursor = managedQuery(uri, 
-			projection, 
-			"_id = ?", 
-			new String[] { String.valueOf(contact_id) }, 
-			null);
-		
-		cursor.moveToFirst();
-		return new Contact(cursor.getString(0), null, contact_id);
-	}
+//	private Contact makeContact(int adrId) {
+//		Uri uri = ContactsContract.Contacts.CONTENT_URI;
+//		String[] projection = new String[] {
+//			ContactsContract.Contacts.DISPLAY_NAME
+//		};
+//		
+//		Cursor cursor = managedQuery(uri, 
+//			projection, 
+//			"_id = ?", 
+//			new String[] { String.valueOf(adrId) }, 
+//			null);
+//		
+//		cursor.moveToFirst();
+//		return Contact.create(adrId, null);
+//	}
 	
 	@Override
 	protected void onPause() {

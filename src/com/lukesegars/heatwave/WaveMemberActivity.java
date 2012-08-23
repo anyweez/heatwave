@@ -93,14 +93,15 @@ public class WaveMemberActivity extends ListActivity {
 		cursor.moveToFirst();
 		while (!cursor.isAfterLast()) {
 			int cNum = contactIds.size();
-			int cid = cursor.getInt(0);
+			int adrId = cursor.getInt(0);
 
 			// Fetch the wave information for the current contact.
-			Contact c = database.fetchContact(cid);
+			Contact c = Contact.loadByAdrId(adrId);
+//			Contact c = database.fetchContact(cid);
 			if (c != null) {
 				Wave w = c.getWave();
 
-				contactIds.add(cid);
+				contactIds.add(adrId);
 				contactNames.add(cursor.getString(1));
 			
 				if (w != null && w.getId() == wave.getId()) {
@@ -117,19 +118,20 @@ public class WaveMemberActivity extends ListActivity {
 		// For each user, update their contact record to indicate that
 		// they are in the current wave.
 		for (Integer cid : actives) {
-			Contact c = database.fetchContact(cid);
-			c.setWave(wave);
-
-			// Save the changes.
-			database.updateContact(c);
+			Contact c = Contact.loadByAdrId(cid);
+			Contact.Fields cf = c.new Fields();
+			
+			cf.setWave(wave);
+			c.modify(cf);
 		}
 
 		// Update the records of individuals who are no longer in the wave.
 		for (Integer cid : inactives) {
-			Contact c = database.fetchContact(cid);
-			c.setWave(null);
+			Contact c = Contact.loadByAdrId(cid);
+			Contact.Fields cf = c.new Fields();
 			
-			database.updateContact(c);
+			cf.setWave(wave);
+			c.modify(cf);
 		}
 		
 	}
