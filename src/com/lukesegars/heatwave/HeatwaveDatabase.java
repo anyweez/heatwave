@@ -2,18 +2,15 @@ package com.lukesegars.heatwave;
 
 import java.util.ArrayList;
 
-import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteQueryBuilder;
-import android.database.sqlite.SQLiteDatabase.CursorFactory;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.net.Uri;
 import android.provider.CallLog;
-import android.provider.Contacts.People;
 import android.provider.ContactsContract;
 import android.provider.ContactsContract.CommonDataKinds.Phone;
 import android.provider.ContactsContract.Data;
@@ -39,54 +36,51 @@ public class HeatwaveDatabase {
 	 * class.
 	 */
 	private static class HeatwaveOpenHelper extends SQLiteOpenHelper {
-		// TODO: Clean up these constants. Many may not be needed anymore.
 		private static final int DATABASE_VERSION = 2;
 		private static final String DATABASE_NAME = "heatwave";
 		private static final String WAVE_TABLE_NAME = "waves";
 		private static final String CONTACTS_TABLE_NAME = "contacts";
-//		private static final String EVENTLOG_TABLE_NAME = "eventlog";
 
-		private static final String WAVE_TABLE_CREATE = "CREATE TABLE "
-				+ WAVE_TABLE_NAME + " (_id INTEGER PRIMARY KEY AUTOINCREMENT, "
-				+ // primary key
-				"name TEXT, " + // name of the wave
+		private static final String WAVE_TABLE_CREATE = "CREATE TABLE " +
+				WAVE_TABLE_NAME + 
+				" (_id INTEGER PRIMARY KEY AUTOINCREMENT, " + // primary key
+				"name TEXT, " +          // name of the wave
 				"wavelength INTEGER, " + // the amount of time between contact (in
-										// seconds)
+  										 // seconds)
 				"lastContact TEXT)";
 
-		private static final String CONTACTS_TABLE_CREATE = "CREATE TABLE "
-				+ CONTACTS_TABLE_NAME
-				+ " (_id INTEGER PRIMARY KEY AUTOINCREMENT, " + // primary key
+		private static final String CONTACTS_TABLE_CREATE = "CREATE TABLE " + 
+				CONTACTS_TABLE_NAME +
+				" (_id INTEGER PRIMARY KEY AUTOINCREMENT, " + // primary key
 				"uid INTEGER, " +   // system-level user ID (Android contact ID)
 				"wave INTEGER," +   // foreign key to the wave table. Contacts can
-									// only
-									// be in one wave at a time.
+									// only be in one wave at a time.
 				"timestamp TEXT)";
-
-//		private static final String EVENTLOG_TABLE_CREATE = "CREATE TABLE "
-//				+ EVENTLOG_TABLE_NAME
-//				+ " (_id INTEGER PRIMARY KEY AUTOINCREMENT, "
-//				+ "event_type TEXT, " + "uid INTEGER, " + "timestamp DATETIME)";
 
 		public HeatwaveOpenHelper(Context context) {
 			super(context, DATABASE_NAME, null, DATABASE_VERSION);
 		}
 
-		@Override
 		/**
 		 * Creates all of the required tables in the "waves" database. 
 		 */
+		@Override
 		public void onCreate(SQLiteDatabase db) {
 			db.execSQL(WAVE_TABLE_CREATE);
 			db.execSQL(CONTACTS_TABLE_CREATE);
-//			db.execSQL(EVENTLOG_TABLE_CREATE);
 		}
 
+		/**
+		 * Deletes existing tables and replaces them with new schemas.  This is
+		 * pretty destructive and it'd be a good idea to try to preserve the
+		 * data that's in the tables where possible.
+		 * 
+		 * TODO: Preserve data before dropping tables.
+		 */
 		@Override
 		public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
 			db.execSQL("DROP TABLE IF EXISTS " + WAVE_TABLE_NAME);
 			db.execSQL("DROP TABLE IF EXISTS " + CONTACTS_TABLE_NAME);
-//			db.execSQL("DROP TABLE IF EXISTS " + EVENTLOG_TABLE_NAME);
 
 			onCreate(db);
 		}
@@ -96,9 +90,14 @@ public class HeatwaveDatabase {
 		context = c;
 	}
 
+	/**
+	 * Provides a pointer to the singleton HeatwaveDatabase instance.
+	 *  
+	 * @param c
+	 * @return
+	 */
 	public static HeatwaveDatabase getInstance(Context c) {
-		if (instance != null)
-			return instance;
+		if (instance != null) return instance;
 		else {
 			instance = new HeatwaveDatabase(c);
 			instance.open();
@@ -126,6 +125,18 @@ public class HeatwaveDatabase {
 	//// Contact-related methods //////
 	///////////////////////////////////
 
+	/**
+	 * Add a single contact to the persistent database.  This method
+	 * does not perform any checking and will blindly attempt to
+	 * insert the contact, including incomplete fields, into the table.
+	 * It will also not attempt to update pre-existing records.
+	 * 
+	 * This is a relatively low-level interface.  Consider using
+	 * @link Contact.create() when possible.
+	 * 
+	 * @param newContact
+	 * @return
+	 */
 	public Contact addContact(Contact newContact) {
 		database.insert(HeatwaveOpenHelper.CONTACTS_TABLE_NAME, 
 			null, newContact.cv());
@@ -133,6 +144,13 @@ public class HeatwaveDatabase {
 		return fetchContact(newContact.getAdrId());
 	}
 
+	/**
+	 * Adds multiple users, one after the other.  If an exception
+	 * occurs then the function terminates immediately, possibly
+	 * leaving a partial update in progress.
+	 * 
+	 * @param contacts
+	 */
 	public void addContacts(ArrayList<Contact> contacts) {
 		for (Contact c : contacts) {
 			addContact(c);
@@ -152,6 +170,16 @@ public class HeatwaveDatabase {
 		return exists;
 	}
 
+	/**
+	 * Updates a pre-existing contact record.  This function does not
+	 * do any error checking and does not insert a new row if the target
+	 * row does not exist.
+	 * 
+	 * Like @link HeatwaveDatabase.addContact, this is a relatively low-level 
+	 * interface.  Consider using @link Contact.modify() if possible.
+	 * 
+	 * @param c
+	 */
 	public void updateContact(Contact c) {
 		database.update(HeatwaveOpenHelper.CONTACTS_TABLE_NAME, 
 			c.cv(), 
@@ -159,23 +187,12 @@ public class HeatwaveDatabase {
 			new String[] { String.valueOf(c.getContactId()) });
 	}
 	
-	public ArrayList<Integer> getActiveContactIds() {
-		String[] projection = new String[] { "_id" };
-
-		Cursor c = database.query(HeatwaveOpenHelper.CONTACTS_TABLE_NAME,
-				projection, null, null, null, null, null);
-
-		ArrayList<Integer> activeContacts = new ArrayList<Integer>();
-		c.moveToFirst();
-
-		while (!c.isAfterLast()) {
-			activeContacts.add(c.getInt(0));
-			c.moveToNext();
-		}
-
-		return activeContacts;
-	}
-	
+	/**
+	 * Get the Android ID's for all of the contacts that are currently
+	 * registered in Heatwave.
+	 * 
+	 * @return
+	 */
 	public ArrayList<Integer> getActiveContactAdrIds() {
 		String[] projection = new String[] { "uid" };
 
@@ -193,12 +210,25 @@ public class HeatwaveDatabase {
 		return activeContacts;		
 	}
 
+	/**
+	 * Delete the specified contact from the database.
+	 * 
+	 * @param target The object that should be deleted.  Only the Android ID needs to be specified.
+	 * @return true if the delete operation was successful, false otherwise.
+	 */
 	public boolean removeContact(Contact target) {
 		return (database.delete(HeatwaveOpenHelper.CONTACTS_TABLE_NAME,
 				"uid = ?",
 				new String[] { String.valueOf(target.getAdrId()) })) > 0;
 	}
 
+	/**
+	 * Removes a list of contacts from the database.  Only the Android ID 
+	 * needs to be specified in each of the contact objects.
+	 * 
+	 * @param contacts
+	 * @return
+	 */
 	public boolean removeContacts(ArrayList<Contact> contacts) {
 		boolean errors = false;
 		for (Contact c : contacts) {
@@ -209,7 +239,16 @@ public class HeatwaveDatabase {
 		return errors;
 	}
 	
-	// TODO: merge fetchContact and fetchContacts to share a lot of this code.
+	/**
+	 * Retrieves all of the necessary information for the user identified
+	 * by adrId and returns a Contact object that encapsulates it.
+	 * 
+	 * TODO: Add ContactNotFoundException's where appropriate.
+	 * TODO: Merge fetchContact and fetchContacts to share a lot of this code.
+	 * 
+	 * @param adrId The ID of the 
+	 * @return
+	 */
 	public Contact fetchContact(int adrId) {
 		// Get the list of contacts from the Heatwave database.
 		SQLiteQueryBuilder qBuilder = new SQLiteQueryBuilder();
@@ -220,7 +259,6 @@ public class HeatwaveDatabase {
 		
 		// Update the timestamp of the most recent call for this user before
 		// requesting that information from the database.
-		
 		Cursor cursor = qBuilder.query(database, 
 			new String[] { "_id", "uid", "wave" }, 
 			"uid = ?", 
@@ -236,7 +274,6 @@ public class HeatwaveDatabase {
 		cf.setAdrId(cursor.getInt(1));
 		cf.setWave(fetchWave(cursor.getInt(2)));
 		cf.setLatestTimestamp(updateTimestamp(adrId));
-//		cf.setLatestTimestamp(Integer.parseInt(cursor.getString(3)));
 		
 		cursor.close();
 		///////////////////////////////////////////////////////////////////
@@ -266,6 +303,17 @@ public class HeatwaveDatabase {
 		return c;
 	}
 	
+	/**
+	 * Scans the system's call log to find the most recent call that's
+	 * been made to or from the provided contact.  The call must have
+	 * lasted at least @link HeatwaveDatabase.DURATION_THRESHOLD seconds
+	 * in order to count as a valid call.
+	 * 
+	 * TODO: Add ContactNotFoundException's where appropriate.
+	 * 
+	 * @param adrId
+	 * @return
+	 */
 	public long updateTimestamp(int adrId) {
 		// Get all of the phone numbers for the contact.
 		StringBuilder contactQuery = new StringBuilder();
@@ -311,6 +359,10 @@ public class HeatwaveDatabase {
 		phoneNumQry.append(CallLog.Calls.TYPE + " != " + CallLog.Calls.MISSED_TYPE + " AND (");
 		
 		while (!c.isAfterLast()) {
+			// Add a clause for the current phone number.  The format that the
+			// phone numbers are stored in is not standardized, so I'm going
+			// to reduce it to the lowest common denominator by removing
+			// weird symbols.
 			phoneNumQry.append(CallLog.Calls.NUMBER + " = " + c.getString(0)
 				.replace("-", "")
 				.replace("+", "")
@@ -358,7 +410,13 @@ public class HeatwaveDatabase {
 	}
 	
 	/**
-	 * Only intended to be used as a debugging method.
+	 * Only intended to be used as a debugging method.  Performs a
+	 * direct database query to get the display name for the Android
+	 * ID that is provided.  Very little error checking is performed
+	 * here.
+	 * 
+	 * Don't use this in production.  It's both ugly and unstable.
+	 * 
 	 * @param adrId
 	 * @return
 	 */
@@ -381,6 +439,17 @@ public class HeatwaveDatabase {
 		return name;
 	}
 	
+	/**
+	 * Get a list of all of the raw contact ID's for the Android ID that's
+	 * provided.  If the contact is an aggregation of multiple contacts then
+	 * this list will contain more than one number.  This will return ID's
+	 * for raw contacts that have phone numbers as well as those that do not.
+	 * 
+	 * TODO: Add ContactNotFoundException's where appropriate
+	 * 
+	 * @param adrId
+	 * @return
+	 */
 	public ArrayList<Long> getRawContacts(int adrId) {
 		Cursor c = context.getContentResolver().query(RawContacts.CONTENT_URI, 
 			new String[] { RawContacts._ID }, 
@@ -398,6 +467,16 @@ public class HeatwaveDatabase {
 		return raws;
 	}
 	
+	/**
+	 * Fetch all contacts.  This is functionally similar to calling @link
+	 * HeatwaveDatabase.fetchContact() for all active contacts, but is much
+	 * more efficient.
+	 * 
+	 * TODO: Can this be made more efficient?
+	 * TODO: Add ContactNotFoundException's as needed.
+	 * 
+	 * @return
+	 */
 	public ArrayList<Contact> fetchContacts() {
 		// Get the list of contacts from the Heatwave database.
 		SQLiteQueryBuilder qBuilder = new SQLiteQueryBuilder();
@@ -533,6 +612,16 @@ public class HeatwaveDatabase {
 		return count;
 	}
 	
+	/**
+	 * Returns a Wave object containing the data for the wave identified
+	 * by the name provided.  This will not create a new wave if the requested
+	 * wave doesn't exist.
+	 * 
+	 * TODO: Add WaveNotFoundException's where needed.
+	 * 
+	 * @param name
+	 * @return
+	 */
 	public Wave loadWaveByName(String name) {
 		Cursor c = database.query(HeatwaveOpenHelper.WAVE_TABLE_NAME,
 				new String[] { "_id" }, 
@@ -541,10 +630,18 @@ public class HeatwaveDatabase {
 				null, null, null);
 		
 		c.moveToFirst();
+		
 		if (c.isAfterLast()) return null;
 		else return fetchWave(c.getInt(0));
 	}
 
+	/**
+	 * Fetch all waves.
+	 * 
+	 * TODO: Add WaveNotFoundException where needed.
+	 * 
+	 * @return
+	 */
 	public ArrayList<Wave> fetchWaves() {
 		SQLiteQueryBuilder qBuilder = new SQLiteQueryBuilder();
 		qBuilder.setTables(HeatwaveOpenHelper.WAVE_TABLE_NAME);
@@ -596,38 +693,4 @@ public class HeatwaveDatabase {
 			return cur.getString(0);
 		}
 	}
-	
-	/**
-	 * Records a log entry for user identified by the provided phone number.
-	 */
-//	public void logCall(String phoneNum) {
-//		Uri uri = Uri.withAppendedPath(
-//			ContactsContract.PhoneLookup.CONTENT_FILTER_URI, 
-//			Uri.encode(phoneNum));
-//		
-//		String[] projection = new String[] {
-//			ContactsContract.PhoneLookup._ID,
-//			ContactsContract.PhoneLookup.DISPLAY_NAME
-//		};
-//		
-//		Cursor cur = context.getContentResolver().query(uri,
-//			projection,
-//			null,
-//			null,
-//			null);
-//		
-//		if (cur.getCount() == 0) {
-//			Log.w(TAG, "Could not identify user with phone number " + phoneNum);
-//		}
-//		else {
-//			cur.moveToFirst();
-//			ContentValues cv = new ContentValues();
-//			cv.put("event_type", "call");
-//			cv.put("uid", cur.getInt(0));
-//			cv.put("timestamp", String.valueOf(System.currentTimeMillis() / 1000));
-//		
-//			database.insert(HeatwaveOpenHelper.EVENTLOG_TABLE_NAME, null, cv);
-//			cur.close();
-//		}
-//	}
 }

@@ -104,17 +104,6 @@ public class Wave {
 		modify(f, true);
 	}
 	
-//	public Wave(String n, int wl) {
-//		name = n;
-//		wave_length = wl;
-//	}
-//	
-//	public Wave(String n, int wl, int wid) {
-//		name = n;
-//		wave_length = wl;
-//		wave_id = wid;
-//	}
-	
 	public int getId() {
 		return fields.getId();
 	}
@@ -126,14 +115,6 @@ public class Wave {
 	public int getWaveLength() {
 		return fields.getWavelength();
 	}
-	
-//	public void setName(String n) {
-//		name = n;
-//	}
-//	
-//	public void setWaveLength(int wl) {
-//		wave_length = wl;
-//	}
 	
 	public ContentValues cv() {
 		ContentValues cv = new ContentValues();
