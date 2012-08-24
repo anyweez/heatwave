@@ -21,9 +21,10 @@ import android.provider.ContactsContract.RawContacts;
 import android.util.Log;
 
 // TODO: Make sure nothing crashes if a Contact is deleted from the Android contact list.
+// FIXME: If Contact is added to HW, then merged with another contact (changing ID's) then ID is not adjusted.
 public class HeatwaveDatabase {
 	private static final String TAG = "HeatwaveDatabase";
-	private static final int DURATION_THRESHOLD = 4;
+	private static final int DURATION_THRESHOLD = 120;
 
 	// SQLite database helper (local class)
 	private HeatwaveOpenHelper dbHelper;
@@ -271,32 +272,27 @@ public class HeatwaveDatabase {
 		ArrayList<Long> rawIds = getRawContacts(adrId);
 		String[] rawStr = new String[rawIds.size()];
 		
-		contactQuery.append("(");
-		for (int i = 0; i < rawIds.size(); i++) {
-			contactQuery.append(Data.RAW_CONTACT_ID + " = ?");
-			rawStr[i] = String.valueOf(rawIds.get(i));
+		// Construct a query string containing all of the Contact's raw ID's.
+		if (rawIds.size() > 0) {
+			contactQuery.append("(");
+			for (int i = 0; i < rawIds.size(); i++) {
+				contactQuery.append(Data.RAW_CONTACT_ID + " = ?");
+				rawStr[i] = String.valueOf(rawIds.get(i));
 			
-			if (i != rawIds.size() - 1) contactQuery.append(" OR ");
+				if (i != rawIds.size() - 1) contactQuery.append(" OR ");
+			}
+			contactQuery.append(") AND ");
 		}
-		contactQuery.append(")");
 		
 		Cursor c = context.getContentResolver().query(Data.CONTENT_URI, 
 			new String[] {
 				Phone.NUMBER,
 			},
-			contactQuery.toString() + " AND " + Data.MIMETYPE + 
+			contactQuery.toString() + Data.MIMETYPE + 
 			" = '" + Phone.CONTENT_ITEM_TYPE + "'",
 			rawStr,
 			null
 		);
-		
-		// Build a query string with all of the phone numbers.
-		StringBuilder phoneNumQry = new StringBuilder();
-		
-		// The call must meet the minimum duration requirement.
-		phoneNumQry.append(CallLog.Calls.DURATION + " >= " + DURATION_THRESHOLD + " AND ");
-		// The call must not be missed (either incoming or outgoing and received)
-		phoneNumQry.append(CallLog.Calls.TYPE + " != " + CallLog.Calls.MISSED_TYPE + " AND ");
 		
 		// There will be at least one phone number for the user because Heatwave
 		// doesn't let you add users that you don't have phone numbers for (see
@@ -307,12 +303,27 @@ public class HeatwaveDatabase {
 		// they are a contact that we've contacted on this device).
 		if (c.isAfterLast()) return 0;
 		
+		// Build a query string with all of the phone numbers.
+		StringBuilder phoneNumQry = new StringBuilder();
+		// The call must meet the minimum duration requirement.
+		phoneNumQry.append(CallLog.Calls.DURATION + " >= " + DURATION_THRESHOLD + " AND ");
+		// The call must not be missed (either incoming or outgoing and received)
+		phoneNumQry.append(CallLog.Calls.TYPE + " != " + CallLog.Calls.MISSED_TYPE + " AND (");
+		
 		while (!c.isAfterLast()) {
-			phoneNumQry.append(CallLog.Calls.NUMBER + " = " + c.getString(0).replace("-", ""));
+			phoneNumQry.append(CallLog.Calls.NUMBER + " = " + c.getString(0)
+				.replace("-", "")
+				.replace("+", "")
+				.replace("(", "")
+				.replace(")", "")
+				.replace(" ", "")
+			);
 			c.moveToNext();
 			
 			if (!c.isAfterLast()) phoneNumQry.append(" OR ");
+			else phoneNumQry.append(")");
 		}
+		c.close();
 		Log.i(TAG, phoneNumQry.toString());
 		
 		// Scan through the call log for recent calls.
@@ -344,6 +355,30 @@ public class HeatwaveDatabase {
 		
 		callCursor.close();
 		return lastCall;
+	}
+	
+	/**
+	 * Only intended to be used as a debugging method.
+	 * @param adrId
+	 * @return
+	 */
+	private String getName(int adrId) {
+		Uri uri = ContactsContract.Contacts.CONTENT_URI;
+		String[] adr_projection = new String[] { 
+			ContactsContract.Contacts.DISPLAY_NAME 
+		};
+
+		// Query to find the contact's name from the Android contact registry.
+		Cursor adrCursor = context.getContentResolver().query(uri,
+			adr_projection, "_id = ?", 
+			new String[] { String.valueOf(adrId) }, 
+			null);
+			
+		adrCursor.moveToFirst();
+		String name = adrCursor.getString(0);
+		adrCursor.close();
+		
+		return name;
 	}
 	
 	public ArrayList<Long> getRawContacts(int adrId) {
