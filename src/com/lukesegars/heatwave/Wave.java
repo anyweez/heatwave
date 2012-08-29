@@ -4,11 +4,12 @@ import android.content.ContentValues;
 import android.content.Context;
 
 public class Wave {
+	// The number of seconds per unit entered in the UI.  The UI currently
+	// asks users for wavelengths in days, which translates into 86400 seconds.
 	public static final int SECONDS_PER_UNIT = 86400;
 	
 	public class Fields {
 		private static final int DEFAULT_ID = -1;
-//		private static final String DEFAULT_NAME = "";
 		private static final int DEFAULT_WAVELENGTH = -1;
 		
 		private int id = DEFAULT_ID;

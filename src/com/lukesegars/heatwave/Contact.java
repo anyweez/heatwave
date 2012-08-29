@@ -1,6 +1,7 @@
 package com.lukesegars.heatwave;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 
 import android.content.ContentValues;
@@ -19,8 +20,10 @@ public class Contact {
 		private int adrId = DEFAULT_ADRID;
 		private String name = null;
 		private Wave wave = null;
+		private String phoneNum = null;
 		
 		private long lastCallTimestamp = DEFAULT_TIMESTAMP;
+		private long tsTime = 0;
 		
 		public Fields() {}
 		
@@ -37,16 +40,44 @@ public class Contact {
 		public Wave getWave() { return wave; }
 		public void setWave(Wave w) { wave = w; }
 		
-		public long getLatestTimestamp() { return lastCallTimestamp; }
-		public void setLatestTimestamp(long ts) { lastCallTimestamp = ts; } 
+		public String getPhoneNum() { 
+			if (phoneNum == null) {
+				try { phoneNum = database.getPhoneForContact(this); }
+				catch (Exception e) {}
+			}
+			
+			if (phoneNum == null) Log.i(TAG, "No phone # found for Android user #" + adrId);
+			return phoneNum; 
+		}
 		
+		public void setPhoneNum(String pn) { phoneNum = pn; }
+		
+		/**
+		 * This method only stores data temporarily since it is based on the
+		 * globally editable CallLog.  If the "last call" timestamp is more
+		 * than one second old then the query is repeated.
+		 * 
+		 * @return
+		 */
+		public long getLatestTimestamp() { 
+			// If the cached timestamp is more than one second old,
+			// query again.  If the query has never been made, the
+			// value of TSTIME will be 0 and LASTCALLTIMESTAMP will
+			// be executed.
+			if (System.currentTimeMillis() - tsTime > 1000) {
+				lastCallTimestamp = database.updateTimestamp(this);
+				tsTime = System.currentTimeMillis();
+			}
+			
+			return lastCallTimestamp;
+		}
+
 		protected void modify(Contact.Fields f) {
 			if (f.getCid() != DEFAULT_CID) setCid(f.getCid());
 			if (f.getAdrId() != DEFAULT_ADRID) setAdrId(f.getAdrId());
 			if (f.getName() != null) setName(f.getName());
 			if (f.getWave() != null) setWave(f.getWave());
-			if (f.getLatestTimestamp() != DEFAULT_TIMESTAMP) 
-				setLatestTimestamp(f.getLatestTimestamp());
+			if (f.getPhoneNum() != null) setPhoneNum(f.getPhoneNum());
 		}
 	}
 	
@@ -121,6 +152,11 @@ public class Contact {
 		return database.fetchContact(adrId);
 	}
 	
+	public static ArrayList<Contact> getAll() {
+		initDb();
+		return database.fetchContacts();
+	}
+	
 	public void modify(Contact.Fields f, boolean updateDb) {
 		initDb();
 		fields.modify(f);
@@ -162,6 +198,10 @@ public class Contact {
 	public Wave getWave() {
 		return fields.getWave();
 	}
+	
+	public String getPhoneNum() {
+		return fields.getPhoneNum();
+	}
 
 	public ContentValues cv() {
 		ContentValues cv = new ContentValues();
@@ -193,7 +233,7 @@ public class Contact {
 			);
 		
 		return ((int) numDays == 0) ?
-			"Last contacted on " + d + " (today)" :
+			"Last contacted on " + d + " (< 1 day ago)" :
 			"Last contacted on " + d + " (" + (int)numDays + " days ago)";
 	}
 	
@@ -201,19 +241,15 @@ public class Contact {
 		// If the timestamp hasn't been set, assume that no contact has been made.
 		// We'll make this a top priority item.
 		if (fields.getLatestTimestamp() == fields.DEFAULT_TIMESTAMP) return 10.0;
-
-		if (fields.getWave() != null) {
-			long currentTime = System.currentTimeMillis() / 1000;
-
-			// FRACTION will always be >= 0
-			double fraction = (currentTime - fields.getLatestTimestamp())
-					/ (fields.getWave().getWaveLength() * 1.0);
-			double score = Math.round(fraction * 100) / 10.0;
-
-			return (score <= 10.0) ? score : 10.0;
 		// If the user isn't part of a wave, their score will always be zero.
-		} else {
-			return 0.0;
-		}
+		if (fields.getWave() == null) return 0.0;
+		
+		long currentTime = System.currentTimeMillis() / 1000;
+		// FRACTION will always be >= 0
+		double fraction = (currentTime - fields.getLatestTimestamp())
+			/ (fields.getWave().getWaveLength() * 1.0);
+		double score = Math.round(fraction * 100) / 10.0;
+
+		return (score <= 10.0) ? score : 10.0;
 	}
 }

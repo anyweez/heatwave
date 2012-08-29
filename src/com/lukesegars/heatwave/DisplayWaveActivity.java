@@ -65,28 +65,10 @@ public class DisplayWaveActivity extends ListActivity {
 	
 	private void loadWaves() {
 		ArrayList<Wave> dbWaves = database.fetchWaves();
-//		int cnt = dbWaves.size();
-		
 		waveAdapter.clear();
 		
 		for (Wave w : dbWaves) waveAdapter.add(w);
-		
 		waveAdapter.notifyDataSetChanged();
-
-		// For each of the waves that was just pulled from the database,
-		// check to see if it exists in the wave list that already exists.
-		// If not, add it.
-//		for (Wave w : dbWaves) {
-//			boolean exists = false;
-//			
-//			for (Wave target : waves) {
-//				if (target.equals(w)) exists = true;
-//			}
-//			
-//			if (!exists) waveAdapter.add(w);
-//		}
-//		
-//		waveAdapter.notifyDataSetChanged();
 	}
 	
 	@Override

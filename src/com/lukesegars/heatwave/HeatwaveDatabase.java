@@ -273,7 +273,6 @@ public class HeatwaveDatabase {
 		cf.setCid(cursor.getInt(0));
 		cf.setAdrId(cursor.getInt(1));
 		cf.setWave(fetchWave(cursor.getInt(2)));
-		cf.setLatestTimestamp(updateTimestamp(adrId));
 		
 		cursor.close();
 		///////////////////////////////////////////////////////////////////
@@ -310,14 +309,15 @@ public class HeatwaveDatabase {
 	 * in order to count as a valid call.
 	 * 
 	 * TODO: Add ContactNotFoundException's where appropriate.
+	 * TODO: Currently not using the last call time that's cached in the database.  Use it or drop it.
 	 * 
 	 * @param adrId
 	 * @return
 	 */
-	public long updateTimestamp(int adrId) {
+	public long updateTimestamp(Contact.Fields fields) {
 		// Get all of the phone numbers for the contact.
 		StringBuilder contactQuery = new StringBuilder();
-		ArrayList<Long> rawIds = getRawContacts(adrId);
+		ArrayList<Long> rawIds = getRawContacts(fields);
 		String[] rawStr = new String[rawIds.size()];
 		
 		// Construct a query string containing all of the Contact's raw ID's.
@@ -376,7 +376,6 @@ public class HeatwaveDatabase {
 			else phoneNumQry.append(")");
 		}
 		c.close();
-		Log.i(TAG, phoneNumQry.toString());
 		
 		// Scan through the call log for recent calls.
 		Cursor callCursor = context.getContentResolver().query(
@@ -403,7 +402,7 @@ public class HeatwaveDatabase {
 		database.update(HeatwaveOpenHelper.CONTACTS_TABLE_NAME, 
 			cv, 
 			"uid = ?", 
-			new String[] { String.valueOf(adrId) });
+			new String[] { String.valueOf(fields.getAdrId()) });
 		
 		callCursor.close();
 		return lastCall;
@@ -420,41 +419,41 @@ public class HeatwaveDatabase {
 	 * @param adrId
 	 * @return
 	 */
-	private String getName(int adrId) {
-		Uri uri = ContactsContract.Contacts.CONTENT_URI;
-		String[] adr_projection = new String[] { 
-			ContactsContract.Contacts.DISPLAY_NAME 
-		};
-
-		// Query to find the contact's name from the Android contact registry.
-		Cursor adrCursor = context.getContentResolver().query(uri,
-			adr_projection, "_id = ?", 
-			new String[] { String.valueOf(adrId) }, 
-			null);
-			
-		adrCursor.moveToFirst();
-		String name = adrCursor.getString(0);
-		adrCursor.close();
-		
-		return name;
-	}
+//	private String getName(int adrId) {
+//		Uri uri = ContactsContract.Contacts.CONTENT_URI;
+//		String[] adr_projection = new String[] { 
+//			ContactsContract.Contacts.DISPLAY_NAME 
+//		};
+//
+//		// Query to find the contact's name from the Android contact registry.
+//		Cursor adrCursor = context.getContentResolver().query(uri,
+//			adr_projection, "_id = ?", 
+//			new String[] { String.valueOf(adrId) }, 
+//			null);
+//			
+//		adrCursor.moveToFirst();
+//		String name = adrCursor.getString(0);
+//		adrCursor.close();
+//		
+//		return name;
+//	}
 	
 	/**
-	 * Get a list of all of the raw contact ID's for the Android ID that's
+	 * Get a list of all of the raw contact ID's for the contact info that's
 	 * provided.  If the contact is an aggregation of multiple contacts then
 	 * this list will contain more than one number.  This will return ID's
 	 * for raw contacts that have phone numbers as well as those that do not.
 	 * 
 	 * TODO: Add ContactNotFoundException's where appropriate
 	 * 
-	 * @param adrId
+	 * @param fields
 	 * @return
 	 */
-	public ArrayList<Long> getRawContacts(int adrId) {
+	public ArrayList<Long> getRawContacts(Contact.Fields fields) {
 		Cursor c = context.getContentResolver().query(RawContacts.CONTENT_URI, 
 			new String[] { RawContacts._ID }, 
 			RawContacts.CONTACT_ID + " = ?", 
-			new String[] { String.valueOf(adrId) }, null);
+			new String[] { String.valueOf(fields.getAdrId()) }, null);
 		
 		ArrayList<Long> raws = new ArrayList<Long>();
 		
@@ -504,8 +503,6 @@ public class HeatwaveDatabase {
 			cf.setCid(cursor.getInt(0));
 			cf.setAdrId(cursor.getInt(1));
 			cf.setWave(fetchWave(cursor.getInt(2)));
-			// Update the timestamp for each user.
-			cf.setLatestTimestamp(updateTimestamp(cf.getAdrId()));
 
 			// Query to find the contact's name
 			Cursor adrCursor = context.getContentResolver().query(uri,
@@ -529,9 +526,9 @@ public class HeatwaveDatabase {
 		return contacts;
 	}
 
-	// ////////////////////////////////
-	// //// Wave-related methods //////
-	// ////////////////////////////////
+	////////////////////////////////
+	//// Wave-related methods //////
+	////////////////////////////////
 
 	public boolean addWave(Wave newWave) {
 		return database.insert(HeatwaveOpenHelper.WAVE_TABLE_NAME, null,
@@ -601,6 +598,7 @@ public class HeatwaveDatabase {
 			selectionArgs,
 			null, null, null);
 		
+		// TODO: Replace with Cursor.getCount() ?
 		int count = 0;
 		c.moveToFirst();
 		while (!c.isAfterLast()) {
@@ -674,23 +672,29 @@ public class HeatwaveDatabase {
 	/// Misc. Lookups ////
 	//////////////////////
 	
-	public String getPhoneForContact(Contact c) throws Exception {
-		String[] projection = new String[] {
-			Phone.NUMBER
-		};
-		
+	public String getPhoneForContact(Contact.Fields fields) throws Exception {
 		Cursor cur = context.getContentResolver().query(Phone.CONTENT_URI, 
-			projection, 
-			Phone.CONTACT_ID + " = ?", 
-			new String[] { String.valueOf(c.getAdrId()) }, 
+			new String[] {
+				Phone.NUMBER,
+				Phone.IS_PRIMARY
+			}, 
+			Phone.CONTACT_ID + " = ? AND " + Data.MIMETYPE + " = ?", 
+			new String[] { String.valueOf(fields.getAdrId()), Phone.CONTENT_ITEM_TYPE }, 
 			null);
 		
 		if (cur.getCount() == 0) {
-			throw new Exception("No phone number available for " + c.toString());
+			// TODO: Add ContactInfoNotFound exception.
+			throw new Exception("No phone number available for Android ID #" + fields.getAdrId());
 		}
 		else {
+			String phoneNum = null;
+			
 			cur.moveToFirst();
-			return cur.getString(0);
+			while (!cur.isAfterLast()) {
+				if (cur.getInt(1) == 1 || phoneNum == null) phoneNum = cur.getString(0);
+				cur.moveToNext();
+			}
+			return phoneNum;
 		}
 	}
 }

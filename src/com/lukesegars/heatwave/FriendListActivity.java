@@ -10,19 +10,22 @@ import android.os.Message;
 import android.app.ListActivity;
 import android.content.Intent;
 import android.util.Log;
+import android.view.ContextMenu;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ContextMenu.ContextMenuInfo;
+import android.widget.AdapterView;
 import android.widget.ListView;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 
 public class FriendListActivity extends ListActivity {
 	private static final String TAG = "FriendListActivity";
 	
-//	private OutgoingCallReceiver ocr = null;
-
 	// Whether the UI should be refreshed.
 	private boolean shouldRefresh = true;
-	private HeatwaveDatabase database;
+//	private HeatwaveDatabase database;
 	
 	private Comparator<Contact> listSorter = new Comparator<Contact>() {
 		public int compare(Contact first, Contact second) {
@@ -36,12 +39,16 @@ public class FriendListActivity extends ListActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         storeObjectContext();
+		registerForContextMenu(getListView());
         
         setContentView(R.layout.activity_friend_list);
+        long startTime = System.currentTimeMillis();
+
+//        database = HeatwaveDatabase.getInstance(this);
         
-        database = HeatwaveDatabase.getInstance(this);
+        ArrayList<Contact> contacts = Contact.getAll(); // database.fetchContacts();
         
-        ArrayList<Contact> contacts = database.fetchContacts();
+        Log.i(TAG, "Contacts fetched after " +  (System.currentTimeMillis() - startTime) / 1000.0 + " seconds");
         ArrayList<String> names = new ArrayList<String>();
         for (Contact c : contacts) {
         	names.add(c.getName());
@@ -56,7 +63,8 @@ public class FriendListActivity extends ListActivity {
         setListAdapter(listAdapter);
         listAdapter.notifyDataSetChanged();
         
-//        launchCallWatcher();
+        Log.i(TAG, "Loaded display in " + (System.currentTimeMillis() - startTime) / 1000.0 + " seconds");
+        // Launch a separate thread to trigger periodic UI updates.
         launchUIRefresher();
     }
     
@@ -86,20 +94,14 @@ public class FriendListActivity extends ListActivity {
     	ContactArrayAdapter adapter = (ContactArrayAdapter)getListAdapter();
 		Contact c = adapter.getItem(position);
 		
-    	try {
-			String phoneNum = database.getPhoneForContact(c);
-	    	Intent i = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + phoneNum));
+		String phoneNum = c.getPhoneNum();
+	    Intent i = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + phoneNum));
 	    	
-	    	startActivity(i);
-		} catch (Exception e) {
-			Log.e(TAG, "Could not find phone number for " + c.toString());
-			e.printStackTrace();
-		}
-    	
+	    startActivity(i);
     }
     
     public void updateContactList() {
-    	ArrayList<Contact> contacts = database.fetchContacts();
+    	ArrayList<Contact> contacts = Contact.getAll();
     	ContactArrayAdapter adapter = (ContactArrayAdapter) getListAdapter();
     	
     	// Remove all contacts and re-add them.
@@ -135,16 +137,7 @@ public class FriendListActivity extends ListActivity {
     		default:
     			return super.onOptionsItemSelected(item);
     	}
-    }
-    
-//    private void launchCallWatcher() {
-//    	
-//    	if (ocr == null) ocr = new OutgoingCallReceiver();
-//    	IntentFilter intents = new IntentFilter();
-//    	intents.addAction("android.intent.action.NEW_OUTGOING_CALL");
-//    	intents.addAction("android.intent.action.PHONE_STATE");
-//    	registerReceiver(ocr, intents);
-//    }
+    }	
     
     private void launchUIRefresher() {
     	timer.start();
@@ -164,7 +157,7 @@ public class FriendListActivity extends ListActivity {
 				}
 				try {
 					// Update the UI every five seconds.
-					Thread.sleep(5000);
+					Thread.sleep(30000);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
