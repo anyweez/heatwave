@@ -23,7 +23,7 @@ public class Contact {
 		private String phoneNum = null;
 		
 		private long lastCallTimestamp = DEFAULT_TIMESTAMP;
-		private long tsTime = 0;
+//		private long tsTime = 0;
 		
 		public Fields() {}
 		
@@ -43,10 +43,11 @@ public class Contact {
 		public String getPhoneNum() { 
 			if (phoneNum == null) {
 				try { phoneNum = database.getPhoneForContact(this); }
-				catch (Exception e) {}
+				catch (Exception e) {
+					Log.w(TAG, "No phone # found for Android user #" + adrId);
+				}
 			}
-			
-			if (phoneNum == null) Log.i(TAG, "No phone # found for Android user #" + adrId);
+
 			return phoneNum; 
 		}
 		
@@ -60,15 +61,9 @@ public class Contact {
 		 * @return
 		 */
 		public long getLatestTimestamp() { 
-			// If the cached timestamp is more than one second old,
-			// query again.  If the query has never been made, the
-			// value of TSTIME will be 0 and LASTCALLTIMESTAMP will
-			// be executed.
-			if (System.currentTimeMillis() - tsTime > 1000) {
+			if (lastCallTimestamp == DEFAULT_TIMESTAMP) {
 				lastCallTimestamp = database.updateTimestamp(this);
-				tsTime = System.currentTimeMillis();
 			}
-			
 			return lastCallTimestamp;
 		}
 

@@ -23,10 +23,6 @@ import android.widget.RadioGroup;
 public class FriendListActivity extends ListActivity {
 	private static final String TAG = "FriendListActivity";
 	
-	// Whether the UI should be refreshed.
-	private boolean shouldRefresh = true;
-//	private HeatwaveDatabase database;
-	
 	private Comparator<Contact> listSorter = new Comparator<Contact>() {
 		public int compare(Contact first, Contact second) {
 			if (first.getScore() < second.getScore()) return 1;
@@ -44,9 +40,7 @@ public class FriendListActivity extends ListActivity {
         setContentView(R.layout.activity_friend_list);
         long startTime = System.currentTimeMillis();
 
-//        database = HeatwaveDatabase.getInstance(this);
-        
-        ArrayList<Contact> contacts = Contact.getAll(); // database.fetchContacts();
+        ArrayList<Contact> contacts = Contact.getAll();
         
         Log.i(TAG, "Contacts fetched after " +  (System.currentTimeMillis() - startTime) / 1000.0 + " seconds");
         ArrayList<String> names = new ArrayList<String>();
@@ -64,15 +58,12 @@ public class FriendListActivity extends ListActivity {
         listAdapter.notifyDataSetChanged();
         
         Log.i(TAG, "Loaded display in " + (System.currentTimeMillis() - startTime) / 1000.0 + " seconds");
-        // Launch a separate thread to trigger periodic UI updates.
-        launchUIRefresher();
     }
     
     @Override
     public void onResume() {
     	super.onResume();
     	
-    	shouldRefresh = true;
     	// Update the list in case anything has changed.
     	updateContactList();
     }
@@ -80,8 +71,6 @@ public class FriendListActivity extends ListActivity {
     @Override
     public void onPause() {
     	super.onPause();
-    	
-    	shouldRefresh = false;
     }
     
     private void storeObjectContext() {
@@ -100,6 +89,7 @@ public class FriendListActivity extends ListActivity {
 	    startActivity(i);
     }
     
+    // TODO: Necessary to clear all and then re-sort?  Would it be faster 
     public void updateContactList() {
     	ArrayList<Contact> contacts = Contact.getAll();
     	ContactArrayAdapter adapter = (ContactArrayAdapter) getListAdapter();
@@ -111,6 +101,7 @@ public class FriendListActivity extends ListActivity {
     		adapter.add(contact);
     	}
     	
+    	adapter.sort(listSorter);
     	adapter.notifyDataSetChanged();
     }
 
@@ -137,40 +128,5 @@ public class FriendListActivity extends ListActivity {
     		default:
     			return super.onOptionsItemSelected(item);
     	}
-    }	
-    
-    private void launchUIRefresher() {
-    	timer.start();
     }
-    
-    /**
-     * Launches a background thread that fires events to the refreshUI
-     * handler every 5 seconds, which in turn causes the friends list UI to
-     * be re-rendered.
-     */
-    private Thread timer = new Thread() {
-		@Override
-		public void run() {
-			while (true) {
-				if (shouldRefresh) {
-					refreshUI.sendEmptyMessage(0);
-				}
-				try {
-					// Update the UI every five seconds.
-					Thread.sleep(30000);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-		}
-	};
-    
-    private Handler refreshUI = new Handler() {
-    	@Override
-    	public void handleMessage(Message msg) {
-        	ContactArrayAdapter adapter = (ContactArrayAdapter) getListAdapter();
-            adapter.sort(listSorter);
-        	adapter.notifyDataSetChanged();
-    	}
-    };
 }

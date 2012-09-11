@@ -488,7 +488,6 @@ public class HeatwaveDatabase {
 		ArrayList<Contact> contacts = new ArrayList<Contact>();
 
 		// Some parameters for the system-wide contact lookups.
-		Uri uri = ContactsContract.Contacts.CONTENT_URI;
 		String[] adr_projection = new String[] { 
 			ContactsContract.Contacts._ID,
 			ContactsContract.Contacts.DISPLAY_NAME 
@@ -505,10 +504,11 @@ public class HeatwaveDatabase {
 			cf.setWave(fetchWave(cursor.getInt(2)));
 
 			// Query to find the contact's name
-			Cursor adrCursor = context.getContentResolver().query(uri,
-					adr_projection, "_id = ?", 
-					new String[] { String.valueOf(cf.getAdrId()) }, 
-					null);
+			Cursor adrCursor = context.getContentResolver().query(
+				ContactsContract.Contacts.CONTENT_URI,
+				adr_projection, "_id = ?", 
+				new String[] { String.valueOf(cf.getAdrId()) }, 
+				null);
 			
 			adrCursor.moveToFirst();
 			cf.setName(adrCursor.getString(1));
