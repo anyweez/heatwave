@@ -5,23 +5,19 @@ import java.util.Comparator;
 
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Message;
 import android.app.ListActivity;
 import android.content.Intent;
 import android.util.Log;
-import android.view.ContextMenu;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ContextMenu.ContextMenuInfo;
-import android.widget.AdapterView;
 import android.widget.ListView;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
 
 public class FriendListActivity extends ListActivity {
 	private static final String TAG = "FriendListActivity";
+
+	// Added before
+	private CallLogMonitor clm = new CallLogMonitor(null);
 	
 	private Comparator<Contact> listSorter = new Comparator<Contact>() {
 		public int compare(Contact first, Contact second) {
@@ -58,6 +54,13 @@ public class FriendListActivity extends ListActivity {
         listAdapter.notifyDataSetChanged();
         
         Log.i(TAG, "Loaded display in " + (System.currentTimeMillis() - startTime) / 1000.0 + " seconds");
+        
+		// Start call listener
+		clm.returnTo(this);
+		getApplicationContext().getContentResolver().registerContentObserver(
+			android.provider.CallLog.Calls.CONTENT_URI, 
+			true, 
+			clm);
     }
     
     @Override
@@ -73,6 +76,14 @@ public class FriendListActivity extends ListActivity {
     	super.onPause();
     }
     
+    @Override
+    public void onDestroy() {
+    	super.onDestroy();
+    	
+    	// Unregister the CallLogMonitor in order to prevent leaks.
+    	getApplicationContext().getContentResolver().unregisterContentObserver(clm);
+    }
+    
     private void storeObjectContext() {
     	Wave.setContext(getApplicationContext());
     	Contact.setContext(getApplicationContext());
@@ -84,9 +95,9 @@ public class FriendListActivity extends ListActivity {
 		Contact c = adapter.getItem(position);
 		
 		String phoneNum = c.getPhoneNum();
-	    Intent i = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + phoneNum));
-	    	
-	    startActivity(i);
+
+		Intent i = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + phoneNum));
+		startActivity(i);
     }
     
     // TODO: Necessary to clear all and then re-sort?  Would it be faster 

@@ -233,11 +233,11 @@ public class Contact {
 	}
 	
 	public double getScore() {
+		// If the user isn't part of a wave, their score will always be zero.
+		if (fields.getWave() == null) return 0.0;
 		// If the timestamp hasn't been set, assume that no contact has been made.
 		// We'll make this a top priority item.
 		if (fields.getLatestTimestamp() == fields.DEFAULT_TIMESTAMP) return 10.0;
-		// If the user isn't part of a wave, their score will always be zero.
-		if (fields.getWave() == null) return 0.0;
 		
 		long currentTime = System.currentTimeMillis() / 1000;
 		// FRACTION will always be >= 0
