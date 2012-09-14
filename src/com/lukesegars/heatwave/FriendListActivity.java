@@ -13,6 +13,9 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.ListView;
 
+import net.hockeyapp.android.CrashManager;
+import net.hockeyapp.android.UpdateManager;
+
 public class FriendListActivity extends ListActivity {
 	private static final String TAG = "FriendListActivity";
 
@@ -61,6 +64,9 @@ public class FriendListActivity extends ListActivity {
 			android.provider.CallLog.Calls.CONTENT_URI, 
 			true, 
 			clm);
+		
+		// Hockey.net
+	    checkForUpdates();
     }
     
     @Override
@@ -69,6 +75,8 @@ public class FriendListActivity extends ListActivity {
     	
     	// Update the list in case anything has changed.
     	updateContactList();
+
+        checkForCrashes();
     }
     
     @Override
@@ -83,6 +91,17 @@ public class FriendListActivity extends ListActivity {
     	// Unregister the CallLogMonitor in order to prevent leaks.
     	getApplicationContext().getContentResolver().unregisterContentObserver(clm);
     }
+    
+    // Hockey.app
+    private void checkForCrashes() {
+    	CrashManager.register(this, "com.lukesegars.heatwave");
+    }
+    
+    private void checkForUpdates() {
+        // TODO: Remove this for store builds!
+    	UpdateManager.register(this, "com.lukesegars.heatwave");
+    }
+    // end Hockey.app
     
     private void storeObjectContext() {
     	Wave.setContext(getApplicationContext());
