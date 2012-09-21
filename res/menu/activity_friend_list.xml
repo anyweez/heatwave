@@ -1,13 +1,16 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android" >
-
     <item
         android:id="@+id/menu_contacts"
         android:orderInCategory="10"
-        android:title="@string/menu_contacts"/>
+		android:showAsAction="ifRoom|withText"
+		android:icon="@drawable/manage_contacts"
+        android:title="@string/menu_contacts" />
     <item
         android:id="@+id/menu_waves"
         android:orderInCategory="50"
-        android:title="@string/menu_waves"/>
+        android:showAsAction="ifRoom|withText"
+		android:icon="@drawable/manage_waves"
+        android:title="@string/menu_waves" />
 	<!--
     <item
         android:id="@+id/menu_settings"

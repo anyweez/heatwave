@@ -1,6 +1,12 @@
-<menu xmlns:android="http://schemas.android.com/apk/res/android" >
+<!--
+  This file defines the menu that shows up when the user is on the
+  DisplayWaveActivity and triggers the menu.
+-->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/menu_new_wave"
         android:orderInCategory="100"
-        android:title="@string/menu_new_wave"/>
+		android:showAsAction="ifRoom|withText"
+		android:icon="@drawable/manage_waves"
+        android:title="@string/menu_new_wave" />
 </menu>

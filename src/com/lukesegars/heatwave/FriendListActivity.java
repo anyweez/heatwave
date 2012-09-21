@@ -94,12 +94,12 @@ public class FriendListActivity extends ListActivity {
     
     // Hockey.app
     private void checkForCrashes() {
-    	CrashManager.register(this, "com.lukesegars.heatwave");
+    	CrashManager.register(this, "800a9d6afe09212f2190b77eec8ea168");
     }
     
     private void checkForUpdates() {
         // TODO: Remove this for store builds!
-    	UpdateManager.register(this, "com.lukesegars.heatwave");
+    	UpdateManager.register(this, "800a9d6afe09212f2190b77eec8ea168");
     }
     // end Hockey.app
     

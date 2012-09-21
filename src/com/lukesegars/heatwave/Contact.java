@@ -15,6 +15,7 @@ public class Contact {
 		protected static final long DEFAULT_CID = -1;
 		protected static final int DEFAULT_ADRID = -1;
 		protected static final long DEFAULT_TIMESTAMP = 0;
+		protected static final long DEFAULT_CALL_ID = -1;
 		
 		private long cid = DEFAULT_CID;
 		private int adrId = DEFAULT_ADRID;
@@ -23,7 +24,7 @@ public class Contact {
 		private String phoneNum = null;
 		
 		private long lastCallTimestamp = DEFAULT_TIMESTAMP;
-//		private long tsTime = 0;
+		private long lastCallId = DEFAULT_CALL_ID;
 		
 		public Fields() {}
 		
@@ -60,19 +61,28 @@ public class Contact {
 		 * 
 		 * @return
 		 */
-		public long getLatestTimestamp() { 
+		public long getLatestTimestamp() {
+			long start = System.currentTimeMillis();
+			boolean read = false;
 			if (lastCallTimestamp == DEFAULT_TIMESTAMP) {
 				lastCallTimestamp = database.updateTimestamp(this);
+				read = true;
 			}
+			
+			Log.w(TAG, "Timestamp fetch for " + getName() + " [read = " + (read ? "true" : "false") + "]: " + (System.currentTimeMillis() - start) / 1000.0 + " seconds");
 			return lastCallTimestamp;
 		}
 
+		public long getLastCallId() { return lastCallId; }
+		public void setLastCallId(long lcid) { lastCallId = lcid; }
+		
 		protected void modify(Contact.Fields f) {
 			if (f.getCid() != DEFAULT_CID) setCid(f.getCid());
 			if (f.getAdrId() != DEFAULT_ADRID) setAdrId(f.getAdrId());
 			if (f.getName() != null) setName(f.getName());
 			if (f.getWave() != null) setWave(f.getWave());
 			if (f.getPhoneNum() != null) setPhoneNum(f.getPhoneNum());
+			if (f.getLastCallId() != DEFAULT_CALL_ID) setLastCallId(f.getLastCallId());
 		}
 	}
 	
@@ -111,7 +121,7 @@ public class Contact {
 			Log.i(TAG, "Creating new contact (adr #" + adrId + ")");
 			// Create the Contact object.
 			Contact c = Contact.skeleton();
-		
+
 			Contact.Fields cf = c.new Fields();
 			cf.setAdrId(adrId);
 			cf.setWave(w);
@@ -203,7 +213,7 @@ public class Contact {
 
 		cv.put("uid", fields.getAdrId());
 		cv.put("wave", (fields.getWave() == null) ? null : fields.getWave().getId());
-		cv.put("timestamp", fields.getLatestTimestamp());
+		cv.put("lastCallId", fields.getLastCallId());
 
 		return cv;
 	}

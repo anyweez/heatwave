@@ -36,7 +36,7 @@ public class HeatwaveDatabase {
 	 * class.
 	 */
 	private static class HeatwaveOpenHelper extends SQLiteOpenHelper {
-		private static final int DATABASE_VERSION = 2;
+		private static final int DATABASE_VERSION = 3;
 		private static final String DATABASE_NAME = "heatwave";
 		private static final String WAVE_TABLE_NAME = "waves";
 		private static final String CONTACTS_TABLE_NAME = "contacts";
@@ -55,7 +55,7 @@ public class HeatwaveDatabase {
 				"uid INTEGER, " +   // system-level user ID (Android contact ID)
 				"wave INTEGER," +   // foreign key to the wave table. Contacts can
 									// only be in one wave at a time.
-				"timestamp TEXT)";
+				"lastCallId INTEGER)";	// the CallLog ID of the last call that was
 
 		public HeatwaveOpenHelper(Context context) {
 			super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -260,7 +260,7 @@ public class HeatwaveDatabase {
 		// Update the timestamp of the most recent call for this user before
 		// requesting that information from the database.
 		Cursor cursor = qBuilder.query(database, 
-			new String[] { "_id", "uid", "wave" }, 
+			new String[] { "_id", "uid", "wave", "lastCallId"}, 
 			"uid = ?", 
 			new String[] { String.valueOf(adrId) },
 			null, null, null);
@@ -273,6 +273,7 @@ public class HeatwaveDatabase {
 		cf.setCid(cursor.getInt(0));
 		cf.setAdrId(cursor.getInt(1));
 		cf.setWave(fetchWave(cursor.getInt(2)));
+		cf.setLastCallId(cursor.getInt(3));
 		
 		cursor.close();
 		///////////////////////////////////////////////////////////////////
@@ -326,7 +327,7 @@ public class HeatwaveDatabase {
 			for (int i = 0; i < rawIds.size(); i++) {
 				contactQuery.append(Data.RAW_CONTACT_ID + " = ?");
 				rawStr[i] = String.valueOf(rawIds.get(i));
-			
+
 				if (i != rawIds.size() - 1) contactQuery.append(" OR ");
 			}
 			contactQuery.append(") AND ");
@@ -353,11 +354,15 @@ public class HeatwaveDatabase {
 		
 		// Build a query string with all of the phone numbers.
 		StringBuilder phoneNumQry = new StringBuilder();
+		// Only need to check ID's beyond the latest one that was discovered and stored.
+		phoneNumQry.append("_id >= ? AND ");
 		// The call must meet the minimum duration requirement.
 		phoneNumQry.append(CallLog.Calls.DURATION + " >= " + DURATION_THRESHOLD + " AND ");
 		// The call must not be missed (either incoming or outgoing and received)
 		phoneNumQry.append(CallLog.Calls.TYPE + " != " + CallLog.Calls.MISSED_TYPE + " AND (");
 		
+		// There will always be at least one iteration of this loop given that we've
+		// already checked to make sure that we're not at the end.
 		while (!c.isAfterLast()) {
 			// Add a clause for the current phone number.  The format that the
 			// phone numbers are stored in is not standardized, so I'm going
@@ -381,10 +386,13 @@ public class HeatwaveDatabase {
 		Cursor callCursor = context.getContentResolver().query(
 			android.provider.CallLog.Calls.CONTENT_URI, 
 			new String[] {
-				CallLog.Calls.DATE,
+				"_id",
+				CallLog.Calls.DATE
 			}, 
 			phoneNumQry.toString(), 
-			null,
+			new String[] {
+				String.valueOf(fields.getLastCallId())
+			},
 			android.provider.CallLog.Calls.DATE + " DESC LIMIT 1");
 
 		callCursor.moveToFirst();
@@ -393,16 +401,20 @@ public class HeatwaveDatabase {
 		// them or its been so long that it fell off the end of the logs.
 		// Either way we're stuck with assuming they've never called.
 		if (callCursor.isAfterLast()) return 0;
+		
+		long callId = callCursor.getLong(0);
+		long lastCall = (Long.parseLong(callCursor.getString(1)) / 1000);
 
-		long lastCall = (Long.parseLong(callCursor.getString(0)) / 1000);
+		// Modify the stored latest call ID.
+		if (callId != fields.getLastCallId()) {
+			ContentValues cv = new ContentValues();
 
-		// Save the new timestamp as the most recent one.
-		ContentValues cv = new ContentValues();
-		cv.put("timestamp", lastCall);
-		database.update(HeatwaveOpenHelper.CONTACTS_TABLE_NAME, 
-			cv, 
-			"uid = ?", 
-			new String[] { String.valueOf(fields.getAdrId()) });
+			cv.put("lastCallId", callId);
+			database.update(HeatwaveOpenHelper.CONTACTS_TABLE_NAME, 
+				cv, 
+				"uid = ?", 
+				new String[] { String.valueOf(fields.getAdrId()) });
+		}
 		
 		callCursor.close();
 		return lastCall;
@@ -481,7 +493,7 @@ public class HeatwaveDatabase {
 		SQLiteQueryBuilder qBuilder = new SQLiteQueryBuilder();
 		qBuilder.setTables(HeatwaveOpenHelper.CONTACTS_TABLE_NAME);
 
-		String[] local_projection = { "_id", "uid", "wave", "timestamp" };
+		String[] local_projection = { "_id", "uid", "wave", "lastCallId" };
 
 		Cursor cursor = qBuilder.query(database, local_projection, null, null,
 				null, null, null);
