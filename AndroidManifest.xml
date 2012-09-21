@@ -1,0 +1,56 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.lukesegars.heatwave"
+    android:versionCode="5"
+    android:versionName="1.2.2" >
+
+    <uses-sdk
+        android:minSdkVersion="8"
+        android:targetSdkVersion="16" />
+
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.PROCESS_OUTGOING_CALLS" />
+
+    <!-- Hockey.app permissions -->
+	<uses-permission android:name="android.permission.INTERNET" />
+	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+	<!-- end Hockey.app permissions -->
+		
+    <application
+        android:icon="@drawable/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/AppTheme" >
+        <activity
+        	uiOptions="splitActionBarWhenNarrow"
+            android:name=".FriendListActivity"
+            android:label="@string/title_activity_friend_list" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+        	uiOptions="splitActionBarWhenNarrow"
+            android:name=".DisplayWaveActivity"
+            android:label="@string/title_display_wave_list" >
+        </activity>
+        <activity
+            android:name=".EditWaveActivity"
+            android:label="@string/title_edit_wave" >
+        </activity>
+        <activity
+            android:name=".SelectContactsActivity"
+            android:label="@string/title_select_contacts" />
+        <activity
+            android:name=".WaveMemberActivity"
+            android:label="Select wave members" />
+        
+        <!-- Hockey.app stuff -->
+        <activity android:name="net.hockeyapp.android.UpdateActivity" />
+		
+		
+    </application>
+
+</manifest>
