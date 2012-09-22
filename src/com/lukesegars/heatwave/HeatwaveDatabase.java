@@ -217,6 +217,9 @@ public class HeatwaveDatabase {
 	 * @return true if the delete operation was successful, false otherwise.
 	 */
 	public boolean removeContact(Contact target) {
+		// If the target doesn't exist then we don't need to delete it.
+		if (target == null) return false;
+		
 		return (database.delete(HeatwaveOpenHelper.CONTACTS_TABLE_NAME,
 				"uid = ?",
 				new String[] { String.valueOf(target.getAdrId()) })) > 0;
@@ -294,11 +297,17 @@ public class HeatwaveDatabase {
 			null);
 			
 		adrCursor.moveToFirst();
-		cf.setName(adrCursor.getString(1));
+
+		// If any results were found then update the fields in the Contact
+		// object.  Otherwise ignore the fields.  We can't delete automatically
+		// here because this method is used by Contact.delete().
+		if (!adrCursor.isAfterLast()) {
+			cf.setName(adrCursor.getString(1));
+			c.modify(cf, false);
+		}
 		
 		// Clean up.
 		adrCursor.close();
-		c.modify(cf, false);
 		
 		return c;
 	}
@@ -523,13 +532,26 @@ public class HeatwaveDatabase {
 				null);
 			
 			adrCursor.moveToFirst();
-			cf.setName(adrCursor.getString(1));
+			
+			// If a record was found with the most recent query then that
+			// means that the contact exists in the Android contact table.
+			// Otherwise, assume the user has been deleted and remove this
+			// contact from the HW contacts database.
+			if (!adrCursor.isAfterLast()) {
+				cf.setName(adrCursor.getString(1));				
+
+				c.modify(cf, false);
+				contacts.add(c);
+			}
+			// If no contact info was found then the contact has been deleted
+			// from the Android address book.  Erase them from our table as 
+			// well.
+			else {
+				Contact.delete(cf.getAdrId());
+			}
 
 			// Clean up.
 			adrCursor.close();
-			
-			c.modify(cf, false);
-			contacts.add(c);
 
 			cursor.moveToNext();
 		}

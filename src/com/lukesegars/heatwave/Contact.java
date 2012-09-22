@@ -11,6 +11,14 @@ import android.util.Log;
 public class Contact {
 	private static final String TAG = "Contact";
 	
+	/**
+	 * The Fields subclass is instantiated once for each Contact object.  It
+	 * contains all of the information that is relevant to a particular Contact.
+	 * It (1) creates a layer of abstraction over the fact that the fields
+	 * exist in different databases and (2) lets us run some of the more time-
+	 * consuming queries just-in-time.
+	 * 
+	 */
 	public class Fields {
 		protected static final long DEFAULT_CID = -1;
 		protected static final int DEFAULT_ADRID = -1;
@@ -62,14 +70,10 @@ public class Contact {
 		 * @return
 		 */
 		public long getLatestTimestamp() {
-			long start = System.currentTimeMillis();
-			boolean read = false;
 			if (lastCallTimestamp == DEFAULT_TIMESTAMP) {
 				lastCallTimestamp = database.updateTimestamp(this);
-				read = true;
 			}
 			
-			Log.w(TAG, "Timestamp fetch for " + getName() + " [read = " + (read ? "true" : "false") + "]: " + (System.currentTimeMillis() - start) / 1000.0 + " seconds");
 			return lastCallTimestamp;
 		}
 
@@ -114,11 +118,9 @@ public class Contact {
 		initDb();
 		
 		if (database.contactExists(adrId)) {
-			Log.i(TAG, "Loading preexisting contact (adr #" + adrId + ")");
 			return Contact.loadByAdrId(adrId);
 		}
 		else {
-			Log.i(TAG, "Creating new contact (adr #" + adrId + ")");
 			// Create the Contact object.
 			Contact c = Contact.skeleton();
 
@@ -136,6 +138,8 @@ public class Contact {
 	}
 	
 	public static void delete(int adrId) {
+		initDb();
+		
 		database.removeContact(Contact.loadByAdrId(adrId));
 	}
 	
@@ -178,7 +182,9 @@ public class Contact {
 	/// Private constructors ///
 	////////////////////////////
 	
-	private Contact() {	}
+	private Contact() {
+		fields = new Contact.Fields();
+	}
 	
 	private Contact(Contact.Fields f) {
 		fields = f;
