@@ -50,7 +50,6 @@
         <!-- Hockey.app stuff -->
         <activity android:name="net.hockeyapp.android.UpdateActivity" />
 		
-		
     </application>
 
 </manifest>

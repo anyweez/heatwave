@@ -12,5 +12,11 @@
     <string name="menu_settings">Settings</string>
     <string name="menu_contacts">X</string>
     <string name="menu_waves">Y</string>
-
+    
+    <string name="button_confirm">Save</string>
+    <string name="button_cancel">Cancel</string>
+    
+    <string name="empty_phone_book">Address book is empty.</string>
+    <string name="empty_contact_list">No contacts added.</string>
+    <string name="empty_wave_list">No waves created.</string>
 </resources>

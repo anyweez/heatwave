@@ -17,7 +17,7 @@
         	android:layout_width="0dp"
         	android:layout_height="wrap_content"
         	android:layout_weight="1.0"
-        	android:text="Cancel" />
+        	android:text="@string/button_cancel" />
 	
     	<!-- Save button -->
 		<Button
@@ -25,7 +25,7 @@
     	    android:layout_width="0dp"
         	android:layout_height="wrap_content"
         	android:layout_weight="1.0"
-        	android:text="Save" />
+        	android:text="@string/button_confirm" />
 	</LinearLayout>
     
     <ListView
@@ -37,9 +37,10 @@
 
     <TextView
         android:id="@android:id/empty"
+        style="@style/NoInfo"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:layout_above="@id/button_bar" 
-        android:text="Address book is empty!" />
+        android:text="@string/empty_phone_book" />
 
 </RelativeLayout>
