@@ -39,24 +39,13 @@ public class FriendListActivity extends ListActivity {
         setContentView(R.layout.activity_friend_list);
         long startTime = System.currentTimeMillis();
 
-        ArrayList<Contact> contacts = Contact.getAll();
+        ArrayList<Contact> contacts = new ArrayList<Contact>();
         
-        Log.i(TAG, "Contacts fetched after " +  (System.currentTimeMillis() - startTime) / 1000.0 + " seconds");
-        ArrayList<String> names = new ArrayList<String>();
-        for (Contact c : contacts) {
-        	names.add(c.getName());
-        }
-
         ContactArrayAdapter listAdapter = new ContactArrayAdapter(this,
-        		R.layout.display_contact_row,
-        		contacts);
-        
-        listAdapter.sort(listSorter);
+        	R.layout.display_contact_row,
+        	contacts);
         
         setListAdapter(listAdapter);
-        listAdapter.notifyDataSetChanged();
-        
-        Log.i(TAG, "Loaded display in " + (System.currentTimeMillis() - startTime) / 1000.0 + " seconds");
         
 		// Start call listener
 		clm.returnTo(this);
@@ -64,7 +53,8 @@ public class FriendListActivity extends ListActivity {
 			android.provider.CallLog.Calls.CONTENT_URI, 
 			true, 
 			clm);
-		
+
+        Log.i(TAG, "FriendList ready in " + (System.currentTimeMillis() - startTime) / 1000.0 + " seconds");
 		// Hockey.net
 	    checkForUpdates();
     }
@@ -73,7 +63,8 @@ public class FriendListActivity extends ListActivity {
     public void onResume() {
     	super.onResume();
     	
-    	// Update the list in case anything has changed.
+    	// Update the list in case anything has changed.  This is now called
+    	// for first load as well instead of calling in onStart() as well.
     	updateContactList();
 
         checkForCrashes();
@@ -119,7 +110,7 @@ public class FriendListActivity extends ListActivity {
 		startActivity(i);
     }
     
-    // TODO: Necessary to clear all and then re-sort?  Would it be faster 
+    // TODO: Necessary to clear all and then re-sort?  Faster to diff then +/-?
     public void updateContactList() {
     	ArrayList<Contact> contacts = Contact.getAll();
     	ContactArrayAdapter adapter = (ContactArrayAdapter) getListAdapter();
@@ -143,7 +134,6 @@ public class FriendListActivity extends ListActivity {
     
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-    	// TODO: Add handlers for each of the menu options.
     	switch (item.getItemId()) {
     		case R.id.menu_contacts:
     			startActivity(

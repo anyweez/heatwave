@@ -21,15 +21,18 @@ public class Contact {
 	 */
 	public class Fields {
 		protected static final long DEFAULT_CID = -1;
-		protected static final int DEFAULT_ADRID = -1;
+		protected static final long DEFAULT_ADRID = -1;
 		protected static final long DEFAULT_TIMESTAMP = 0;
 		protected static final long DEFAULT_CALL_ID = -1;
+		protected final String DEFAULT_NAME = null;
+		protected final Wave DEFAULT_WAVE = null;
+		protected final String DEFAULT_PHONE_NUM = null;
 		
 		private long cid = DEFAULT_CID;
-		private int adrId = DEFAULT_ADRID;
-		private String name = null;
-		private Wave wave = null;
-		private String phoneNum = null;
+		private long adrId = DEFAULT_ADRID;
+		private String name = DEFAULT_NAME;
+		private Wave wave = DEFAULT_WAVE;
+		private String phoneNum = DEFAULT_PHONE_NUM;
 		
 		private long lastCallTimestamp = DEFAULT_TIMESTAMP;
 		private long lastCallId = DEFAULT_CALL_ID;
@@ -37,56 +40,60 @@ public class Contact {
 		public Fields() {}
 		
 		// Getters and setters
+		public boolean hasCid() { return cid != DEFAULT_CID; }
 		public long getCid() { return cid; }
 		public void setCid(long c) { cid = c; };
 		
-		public int getAdrId() { return adrId; }
-		public void setAdrId(int a) { adrId = a; }
+		public boolean hasAdrId() { return adrId != DEFAULT_ADRID; }
+		public long getAdrId() { return adrId; }
+		public void setAdrId(long a) { adrId = a; }
 		
+		public boolean hasName() { return name != DEFAULT_NAME; }
 		public String getName() { return name; }
 		public void setName(String n) { name = n; }
 		
+		public boolean hasWave() { return wave != DEFAULT_WAVE; }
 		public Wave getWave() { return wave; }
 		public void setWave(Wave w) { wave = w; }
 		
+		public boolean hasPhoneNum() { return phoneNum != DEFAULT_PHONE_NUM; }
 		public String getPhoneNum() { 
-			if (phoneNum == null) {
+			if (!hasPhoneNum()) {
 				try { phoneNum = database.getPhoneForContact(this); }
 				catch (Exception e) {
-					Log.w(TAG, "No phone # found for Android user #" + adrId);
+					if (!hasAdrId()) {
+						Log.w(TAG, "No adrId set for user when looking up phone num.");
+						e.printStackTrace();
+					}
+					else {
+						Log.w(TAG, "No phone # found for Android user #" + getAdrId());
+					}
 				}
 			}
 
 			return phoneNum; 
 		}
-		
 		public void setPhoneNum(String pn) { phoneNum = pn; }
 		
-		/**
-		 * This method only stores data temporarily since it is based on the
-		 * globally editable CallLog.  If the "last call" timestamp is more
-		 * than one second old then the query is repeated.
-		 * 
-		 * @return
-		 */
+		public boolean hasTimeStamp() { return lastCallTimestamp != DEFAULT_TIMESTAMP; }
 		public long getLatestTimestamp() {
-			if (lastCallTimestamp == DEFAULT_TIMESTAMP) {
+			if (!hasTimeStamp()) {
 				lastCallTimestamp = database.updateTimestamp(this);
 			}
 			
 			return lastCallTimestamp;
 		}
-
+		public boolean hasLastCallId() { return lastCallId != DEFAULT_CALL_ID; }
 		public long getLastCallId() { return lastCallId; }
 		public void setLastCallId(long lcid) { lastCallId = lcid; }
 		
 		protected void modify(Contact.Fields f) {
-			if (f.getCid() != DEFAULT_CID) setCid(f.getCid());
-			if (f.getAdrId() != DEFAULT_ADRID) setAdrId(f.getAdrId());
-			if (f.getName() != null) setName(f.getName());
-			if (f.getWave() != null) setWave(f.getWave());
-			if (f.getPhoneNum() != null) setPhoneNum(f.getPhoneNum());
-			if (f.getLastCallId() != DEFAULT_CALL_ID) setLastCallId(f.getLastCallId());
+			if (f.hasCid()) setCid(f.getCid());
+			if (f.hasAdrId()) setAdrId(f.getAdrId());
+			if (f.hasName()) setName(f.getName());
+			if (f.hasWave()) setWave(f.getWave());
+			if (f.hasPhoneNum()) setPhoneNum(f.getPhoneNum());
+			if (f.hasLastCallId()) setLastCallId(f.getLastCallId());
 		}
 	}
 	
@@ -137,10 +144,11 @@ public class Contact {
 		}
 	}
 	
-	public static void delete(int adrId) {
+	public static void delete(long adrId) {
 		initDb();
 		
-		database.removeContact(Contact.loadByAdrId(adrId));
+		Log.i(TAG, "Removing contact #" + adrId);
+		database.removeContact(adrId);
 	}
 	
 	/**
@@ -154,7 +162,7 @@ public class Contact {
 		return new Contact();
 	}
 	
-	public static Contact loadByAdrId(int adrId) {
+	public static Contact loadByAdrId(long adrId) {
 		initDb();
 		
 		// Select record from database and return it.
@@ -163,6 +171,7 @@ public class Contact {
 	
 	public static ArrayList<Contact> getAll() {
 		initDb();
+
 		return database.fetchContacts();
 	}
 	
@@ -174,45 +183,25 @@ public class Contact {
 		if (updateDb) database.updateContact(this);
 	}
 	
-	public void modify(Contact.Fields f) {
-		modify(f, true);
-	}
+	public void modify(Contact.Fields f) { modify(f, true); }
 	
 	////////////////////////////
 	/// Private constructors ///
 	////////////////////////////
 	
-	private Contact() {
-		fields = new Contact.Fields();
-	}
-	
-	private Contact(Contact.Fields f) {
-		fields = f;
-	}
+	private Contact() {	 fields = new Contact.Fields(); }
+	private Contact(Contact.Fields f) { fields = f; }
 	
 	///////////////////////////
 	/// Getters and setters ///
 	///////////////////////////
 	
-	public long getContactId() {
-		return fields.getCid();
-	}
-
-	public int getAdrId() {
-		return fields.getAdrId();
-	}
-
-	public String getName() {
-		return fields.getName();
-	}
-	
-	public Wave getWave() {
-		return fields.getWave();
-	}
-	
-	public String getPhoneNum() {
-		return fields.getPhoneNum();
-	}
+	public long 		getContactId() { return fields.getCid(); }
+	public long 		getAdrId() { return fields.getAdrId(); }
+	public String 		getName() { return fields.getName(); }
+	public Wave 		getWave() { return fields.getWave(); }
+	public String 		getPhoneNum() { return fields.getPhoneNum(); }
+	public boolean 	hasName() { return fields.hasName(); }
 
 	public ContentValues cv() {
 		ContentValues cv = new ContentValues();
@@ -250,10 +239,10 @@ public class Contact {
 	
 	public double getScore() {
 		// If the user isn't part of a wave, their score will always be zero.
-		if (fields.getWave() == null) return 0.0;
+		if (!fields.hasWave()) return 0.0;
 		// If the timestamp hasn't been set, assume that no contact has been made.
 		// We'll make this a top priority item.
-		if (fields.getLatestTimestamp() == fields.DEFAULT_TIMESTAMP) return 10.0;
+		if (!fields.hasTimeStamp()) return 10.0;
 		
 		long currentTime = System.currentTimeMillis() / 1000;
 		// FRACTION will always be >= 0

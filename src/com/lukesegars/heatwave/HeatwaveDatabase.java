@@ -216,13 +216,10 @@ public class HeatwaveDatabase {
 	 * @param target The object that should be deleted.  Only the Android ID needs to be specified.
 	 * @return true if the delete operation was successful, false otherwise.
 	 */
-	public boolean removeContact(Contact target) {
-		// If the target doesn't exist then we don't need to delete it.
-		if (target == null) return false;
-		
+	public boolean removeContact(long adrId) {
 		return (database.delete(HeatwaveOpenHelper.CONTACTS_TABLE_NAME,
-				"uid = ?",
-				new String[] { String.valueOf(target.getAdrId()) })) > 0;
+			"uid = ?",
+			new String[] { String.valueOf(adrId) })) > 0;
 	}
 
 	/**
@@ -235,7 +232,7 @@ public class HeatwaveDatabase {
 	public boolean removeContacts(ArrayList<Contact> contacts) {
 		boolean errors = false;
 		for (Contact c : contacts) {
-			if (!removeContact(c))
+			if (!removeContact(c.getAdrId()))
 				errors = true;
 		}
 
@@ -252,7 +249,7 @@ public class HeatwaveDatabase {
 	 * @param adrId The ID of the 
 	 * @return
 	 */
-	public Contact fetchContact(int adrId) {
+	public Contact fetchContact(long adrId) {
 		// Get the list of contacts from the Heatwave database.
 		SQLiteQueryBuilder qBuilder = new SQLiteQueryBuilder();
 		qBuilder.setTables(HeatwaveOpenHelper.CONTACTS_TABLE_NAME);
@@ -496,8 +493,11 @@ public class HeatwaveDatabase {
 	 * TODO: Add ContactNotFoundException's as needed.
 	 * 
 	 * @return
+	 * @throws Exception 
 	 */
 	public ArrayList<Contact> fetchContacts() {
+		long start = System.currentTimeMillis();
+		
 		// Get the list of contacts from the Heatwave database.
 		SQLiteQueryBuilder qBuilder = new SQLiteQueryBuilder();
 		qBuilder.setTables(HeatwaveOpenHelper.CONTACTS_TABLE_NAME);
@@ -505,17 +505,11 @@ public class HeatwaveDatabase {
 		String[] local_projection = { "_id", "uid", "wave", "lastCallId" };
 
 		Cursor cursor = qBuilder.query(database, local_projection, null, null,
-				null, null, null);
+			null, null, null);
 		ArrayList<Contact> contacts = new ArrayList<Contact>();
 
-		// Some parameters for the system-wide contact lookups.
-		String[] adr_projection = new String[] { 
-			ContactsContract.Contacts._ID,
-			ContactsContract.Contacts.DISPLAY_NAME 
-		};
-
+		// Load all of the contacts.
 		cursor.moveToFirst();
-		
 		while (!cursor.isAfterLast()) {
 			Contact c = Contact.skeleton();
 			Contact.Fields cf = c.new Fields();
@@ -524,39 +518,64 @@ public class HeatwaveDatabase {
 			cf.setAdrId(cursor.getInt(1));
 			cf.setWave(fetchWave(cursor.getInt(2)));
 
-			// Query to find the contact's name
-			Cursor adrCursor = context.getContentResolver().query(
-				ContactsContract.Contacts.CONTENT_URI,
-				adr_projection, "_id = ?", 
-				new String[] { String.valueOf(cf.getAdrId()) }, 
-				null);
+			c.modify(cf, false);
+			contacts.add(c);
 			
-			adrCursor.moveToFirst();
-			
-			// If a record was found with the most recent query then that
-			// means that the contact exists in the Android contact table.
-			// Otherwise, assume the user has been deleted and remove this
-			// contact from the HW contacts database.
-			if (!adrCursor.isAfterLast()) {
-				cf.setName(adrCursor.getString(1));				
-
-				c.modify(cf, false);
-				contacts.add(c);
-			}
-			// If no contact info was found then the contact has been deleted
-			// from the Android address book.  Erase them from our table as 
-			// well.
-			else {
-				Contact.delete(cf.getAdrId());
-			}
-
-			// Clean up.
-			adrCursor.close();
-
 			cursor.moveToNext();
 		}
-
 		cursor.close();
+
+		Log.i(TAG, "# of contacts loaded: " + contacts.size());
+		// Build a string of all contact ID's to use in the IN clause below.
+		String adrIds = "(";
+		for (int i = 0; i < contacts.size(); i++) {
+			adrIds += String.valueOf(contacts.get(i).getAdrId());
+			if (i != contacts.size() - 1) adrIds += ", ";
+		}
+		adrIds += ")";
+
+		// Fetch all of the names in bulk.
+		Cursor adrCursor = context.getContentResolver().query(
+			ContactsContract.Contacts.CONTENT_URI,
+			// Some parameters for the system-wide contact lookups.
+			new String[] { 
+					ContactsContract.Contacts._ID,
+					ContactsContract.Contacts.DISPLAY_NAME 
+			}, 
+			"_id IN " + adrIds, 
+			null,
+			null);
+
+		adrCursor.moveToFirst();
+		while (!adrCursor.isAfterLast()) {
+			long adrId = adrCursor.getLong(0);
+
+			// Scan through all contacts and find the one that should
+			// be modified.  Once its located, update the name field.
+			for (Contact c : contacts) {
+				if (c.getAdrId() == adrId) {
+					Contact.Fields cf = c.new Fields();
+					cf.setName(adrCursor.getString(1));	
+
+					c.modify(cf, false);
+				}
+			}
+			adrCursor.moveToNext();
+		}
+		adrCursor.close();
+		
+		// Delete contacts that don't have names (meaning they don't have
+		// corresponding entries in the Android contact log).
+		for (int i = contacts.size() - 1; i >= 0; i--) {
+			if (!contacts.get(i).hasName()) {
+				// Remove the contact from the database if they do not exist anymore.
+				Contact.delete(contacts.get(i).getAdrId());
+				
+				contacts.remove(i);
+			}
+		}
+
+		Log.i(TAG, "Fetched contacts in " + (System.currentTimeMillis() - start) / 1000.0 + " seconds");
 		return contacts;
 	}
 
@@ -706,6 +725,13 @@ public class HeatwaveDatabase {
 	/// Misc. Lookups ////
 	//////////////////////
 	
+	/**
+	 * Requires that the adrId be set in the fields.
+	 * 
+	 * @param fields
+	 * @return
+	 * @throws Exception
+	 */
 	public String getPhoneForContact(Contact.Fields fields) throws Exception {
 		Cursor cur = context.getContentResolver().query(Phone.CONTENT_URI, 
 			new String[] {
