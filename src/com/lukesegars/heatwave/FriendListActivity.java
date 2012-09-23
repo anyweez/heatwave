@@ -54,7 +54,6 @@ public class FriendListActivity extends ListActivity {
 			true, 
 			clm);
 
-        Log.i(TAG, "FriendList ready in " + (System.currentTimeMillis() - startTime) / 1000.0 + " seconds");
 		// Hockey.net
 	    checkForUpdates();
     }
@@ -110,7 +109,7 @@ public class FriendListActivity extends ListActivity {
 		startActivity(i);
     }
     
-    // TODO: Necessary to clear all and then re-sort?  Faster to diff then +/-?
+    // TODO: Better to clear all and then re-sort?  Faster to diff then +/-?
     public void updateContactList() {
     	ArrayList<Contact> contacts = Contact.getAll();
     	ContactArrayAdapter adapter = (ContactArrayAdapter) getListAdapter();

@@ -238,6 +238,9 @@ public class Contact {
 	}
 	
 	public double getScore() {
+		// TODO: This probably doesn't need to be called this frequently.
+		if (!fields.hasTimeStamp()) fields.getLatestTimestamp();
+		
 		// If the user isn't part of a wave, their score will always be zero.
 		if (!fields.hasWave()) return 0.0;
 		// If the timestamp hasn't been set, assume that no contact has been made.
