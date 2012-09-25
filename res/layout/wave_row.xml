@@ -5,19 +5,17 @@
     android:gravity="center_vertical"
     android:orientation="vertical" 
     style="@style/ListItemStyle">
-
+    
     <TextView
         android:id="@+id/wave_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        style="@style/ListItemTitle">
-    </TextView>
+        style="@style/ListItemTitle" />
 
     <TextView
         android:id="@+id/wave_subtitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        style="@style/ListItemSubtitle">
-    </TextView>
+        style="@style/ListItemSubtitle" />
 
 </LinearLayout>

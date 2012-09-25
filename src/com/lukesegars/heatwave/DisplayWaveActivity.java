@@ -13,12 +13,14 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.ListAdapter;
 import android.widget.ListView;
 
 public class DisplayWaveActivity extends ListActivity {
 	private static final String TAG = "DisplayWaveActivity";
-	private static final int MENU_WAVE_EDIT = 0;
-	private static final int MENU_WAVE_DELETE = 1;
+//	private static final int MENU_WAVE_EDIT = 0;
+//	private static final int MENU_WAVE_DELETE = 1;
 	
 	private HeatwaveDatabase database;
 	private WaveArrayAdapter waveAdapter;
@@ -33,7 +35,7 @@ public class DisplayWaveActivity extends ListActivity {
 		database = HeatwaveDatabase.getInstance(this);
 		
 		waves = new ArrayList<Wave>();
-		waveAdapter = new WaveArrayAdapter(this, R.layout.wave_row, waves);
+		waveAdapter = new WaveArrayAdapter(this, R.layout.display_wave_row, waves);
 		
 		getListView().setAdapter(waveAdapter);
 		loadWaves();
@@ -89,34 +91,34 @@ public class DisplayWaveActivity extends ListActivity {
     	}
 	}
 	
-	@Override
-	public void onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo) {
-		super.onCreateContextMenu(menu, v, menuInfo);
-		
-		menu.setHeaderTitle("Modify wave");
-		menu.add(0, MENU_WAVE_EDIT, 0, "Edit wave");
-		menu.add(0, MENU_WAVE_DELETE, 0, "Delete wave");
-	}
+//	@Override
+//	public void onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo) {
+//		super.onCreateContextMenu(menu, v, menuInfo);
+//		
+//		menu.setHeaderTitle("Modify wave");
+//		menu.add(0, MENU_WAVE_EDIT, 0, "Edit wave");
+//		menu.add(0, MENU_WAVE_DELETE, 0, "Delete wave");
+//	}
 	
-	@Override
-	public boolean onContextItemSelected(MenuItem item) {
-		AdapterView.AdapterContextMenuInfo info = 
-			(AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
-
-		int id = (int)waveAdapter.getItemId(info.position);
-		Wave w = waveAdapter.getItem(id);
-
-		if (item.getItemId() == MENU_WAVE_EDIT) {
-			Intent i = new Intent(this, EditWaveActivity.class);
-			i.putExtra("waveId", w.getId());
-			startActivity(i);
-		}
-		else if (item.getItemId() == MENU_WAVE_DELETE) {
-			database.removeWave(w);
-			waveAdapter.remove(w);
-		}
-		waveAdapter.notifyDataSetChanged();
-
-		return false;
-	}
+//	@Override
+//	public boolean onContextItemSelected(MenuItem item) {
+//		AdapterView.AdapterContextMenuInfo info = 
+//			(AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
+//
+//		int id = (int)waveAdapter.getItemId(info.position);
+//		Wave w = waveAdapter.getItem(id);
+//
+//		if (item.getItemId() == MENU_WAVE_EDIT) {
+//			Intent i = new Intent(this, EditWaveActivity.class);
+//			i.putExtra("waveId", w.getId());
+//			startActivity(i);
+//		}
+//		else if (item.getItemId() == MENU_WAVE_DELETE) {
+//			database.removeWave(w);
+//			waveAdapter.remove(w);
+//		}
+//		waveAdapter.notifyDataSetChanged();
+//
+//		return false;
+//	}
 }

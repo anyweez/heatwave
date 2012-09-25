@@ -3,10 +3,13 @@ package com.lukesegars.heatwave;
 import java.util.List;
 
 import android.content.Context;
+import android.content.Intent;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -25,7 +28,7 @@ public class WaveArrayAdapter extends ArrayAdapter<Wave> {
 	public View getView(int position, View convertView, ViewGroup parent) {
 		LinearLayout itemView;
 		
-		Wave wave = getItem(position);
+		final Wave wave = getItem(position);
 		
 		if (convertView == null) {
 			itemView = new LinearLayout(getContext());
@@ -37,8 +40,18 @@ public class WaveArrayAdapter extends ArrayAdapter<Wave> {
 			itemView = (LinearLayout) convertView;
 		}
 		
-		TextView waveTitleField = (TextView)itemView.findViewById(R.id.wave_title);
-		TextView waveSubtitleField = (TextView)itemView.findViewById(R.id.wave_subtitle);
+		ImageView btn = (ImageView)itemView.findViewById(R.id.edit_wave);
+		btn.setOnClickListener(new View.OnClickListener() {
+			public void onClick(View v) {
+				Intent intent = new Intent(getContext(), EditWaveActivity.class);
+				intent.putExtra("waveId", wave.getId());
+				
+				getContext().startActivity(intent);
+			}
+		});
+		
+		TextView waveTitleField = (TextView)itemView.findViewById(R.id.wave_name);
+		TextView waveSubtitleField = (TextView)itemView.findViewById(R.id.wave_member_count);
 		
 		waveTitleField.setText(wave.getName());
 		waveSubtitleField.setText(database.getWaveMemberCount(wave) + " members");

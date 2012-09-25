@@ -25,7 +25,7 @@
     <style name="ListItemNote">
         <item name="android:gravity">right|top</item>
 		<item name="android:paddingRight">6dp</item>
-        <item name="android:textColor">#ccc</item>
+        <item name="android:textColor">#aaa</item>
         <item name="android:textSize">10sp</item>
     </style>
     
@@ -39,6 +39,10 @@
         <item name="android:shadowRadius">1.2</item>
         <item name="android:gravity">center</item>
         <item name="android:paddingRight">2dp</item>
+    </style>
+    
+    <style name="EditIcon">
+        <item name="android:src">@drawable/edit_wave_dark</item>
     </style>
     
     <style name="NoInfo">
