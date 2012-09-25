@@ -33,7 +33,6 @@ public class SelectContactsActivity extends ListActivity {
 		Button sc_btn = (Button)findViewById(R.id.save_contacts_btn);
 		sc_btn.setOnClickListener(new View.OnClickListener() {
 			public void onClick(View v) {
-				// TODO: Only process deltas (see code in WaveMemberActivity)
 				SparseBooleanArray arr = getListView().getCheckedItemPositions();
 				
 				ArrayList<Integer> actives = new ArrayList<Integer>();
@@ -64,6 +63,7 @@ public class SelectContactsActivity extends ListActivity {
 		loadAdrContacts();
 	}
 	
+	// TODO: Move this to database layer.
 	private void loadAdrContacts() {
 		Uri uri = ContactsContract.Contacts.CONTENT_URI;
 		String[] projection = new String[] {
@@ -71,7 +71,7 @@ public class SelectContactsActivity extends ListActivity {
 			ContactsContract.Contacts.DISPLAY_NAME
 		};
 
-		Cursor cursor = managedQuery(uri, 
+		Cursor cursor = getContentResolver().query(uri, 
 			projection, 
 			ContactsContract.Contacts.HAS_PHONE_NUMBER + " = 1", 
 			null, 
@@ -84,6 +84,7 @@ public class SelectContactsActivity extends ListActivity {
 			
 			cursor.moveToNext();
 		}
+		cursor.close();
 
 		ListView lv = getListView();
 		ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, 
@@ -96,7 +97,6 @@ public class SelectContactsActivity extends ListActivity {
 		// For each active ID, check to see if the contact ID
 		for (int i = 0; i < contactIds.size(); i++) {
 			if (actives.contains(contactIds.get(i))) lv.setItemChecked(i, true);
-//			else lv.setItemChecked(i, false);
 		}
 		
 		adapter.notifyDataSetChanged();
@@ -110,44 +110,6 @@ public class SelectContactsActivity extends ListActivity {
 		// 2. Delete all of the Contacts that are no longer on the list.
 		for (Integer id : inactives) Contact.delete(id);
 	}
-	
-	/**
-	 * Accepts a list of contact ID's that should define the list of active
-	 * contacts.
-	 * 
-	 * @param activeIds
-	 */
-//	private void updateContacts(ArrayList<Integer> adds, ArrayList<Integer> drops) {
-//		// 1. Create Contact objects and call db.addContacts()
-//		ArrayList<Contact> addContacts = new ArrayList<Contact>();
-//		for (Integer id : adds) {
-//			addContacts.add(makeContact(id));
-//		}
-//		database.addContacts(addContacts);
-//		
-//		// 2. Create Contact objects and call db.removeContacts()
-//		ArrayList<Contact> removeContacts = new ArrayList<Contact>();
-//		for (Integer id : drops) {
-//			removeContacts.add(makeContact(id));
-//		}
-//		database.removeContacts(removeContacts);
-//	}
-	
-//	private Contact makeContact(int adrId) {
-//		Uri uri = ContactsContract.Contacts.CONTENT_URI;
-//		String[] projection = new String[] {
-//			ContactsContract.Contacts.DISPLAY_NAME
-//		};
-//		
-//		Cursor cursor = managedQuery(uri, 
-//			projection, 
-//			"_id = ?", 
-//			new String[] { String.valueOf(adrId) }, 
-//			null);
-//		
-//		cursor.moveToFirst();
-//		return Contact.create(adrId, null);
-//	}
 	
 	@Override
 	protected void onPause() {

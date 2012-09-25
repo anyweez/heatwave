@@ -575,7 +575,7 @@ public class HeatwaveDatabase {
 			}
 		}
 
-		Log.i(TAG, "Fetched contacts in " + (System.currentTimeMillis() - start) / 1000.0 + " seconds");
+		Log.i(TAG, "Fetched " + contacts.size() + " contacts in " + (System.currentTimeMillis() - start) / 1000.0 + " seconds");
 		return contacts;
 	}
 

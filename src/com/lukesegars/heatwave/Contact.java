@@ -17,16 +17,15 @@ public class Contact {
 	 * It (1) creates a layer of abstraction over the fact that the fields
 	 * exist in different databases and (2) lets us run some of the more time-
 	 * consuming queries just-in-time.
-	 * 
 	 */
 	public class Fields {
 		protected static final long DEFAULT_CID = -1;
 		protected static final long DEFAULT_ADRID = -1;
 		protected static final long DEFAULT_TIMESTAMP = 0;
 		protected static final long DEFAULT_CALL_ID = -1;
-		protected final String DEFAULT_NAME = null;
-		protected final Wave DEFAULT_WAVE = null;
-		protected final String DEFAULT_PHONE_NUM = null;
+		protected static final String DEFAULT_NAME = "";
+		protected static final String DEFAULT_PHONE_NUM = "";
+		protected final Wave DEFAULT_WAVE = Wave.skeleton();
 		
 		private long cid = DEFAULT_CID;
 		private long adrId = DEFAULT_ADRID;
@@ -52,18 +51,26 @@ public class Contact {
 		public String getName() { return name; }
 		public void setName(String n) { name = n; }
 		
-		public boolean hasWave() { return wave != DEFAULT_WAVE; }
+		/**
+		 * In order for hasWave() to return true, wave must not be NULL
+		 * and not be equal to the skeleton Wave that was initialized as
+		 * DEFAULT_WAVE.
+		 * 
+		 * @return
+		 */
+		public boolean hasWave() {
+			return wave != null && !DEFAULT_WAVE.equals(wave); 
+		}
 		public Wave getWave() { return wave; }
 		public void setWave(Wave w) { wave = w; }
 		
 		public boolean hasPhoneNum() { return phoneNum != DEFAULT_PHONE_NUM; }
 		public String getPhoneNum() { 
 			if (!hasPhoneNum()) {
-				try { phoneNum = database.getPhoneForContact(this); }
+				try { setPhoneNum(database.getPhoneForContact(this)); }
 				catch (Exception e) {
 					if (!hasAdrId()) {
 						Log.w(TAG, "No adrId set for user when looking up phone num.");
-						e.printStackTrace();
 					}
 					else {
 						Log.w(TAG, "No phone # found for Android user #" + getAdrId());
@@ -77,12 +84,10 @@ public class Contact {
 		
 		public boolean hasTimeStamp() { return lastCallTimestamp != DEFAULT_TIMESTAMP; }
 		public long getLatestTimestamp() {
-			if (!hasTimeStamp()) {
-				lastCallTimestamp = database.updateTimestamp(this);
-			}
-			
+			if (!hasTimeStamp()) { lastCallTimestamp = database.updateTimestamp(this); }
 			return lastCallTimestamp;
 		}
+		
 		public boolean hasLastCallId() { return lastCallId != DEFAULT_CALL_ID; }
 		public long getLastCallId() { return lastCallId; }
 		public void setLastCallId(long lcid) { lastCallId = lcid; }
@@ -91,7 +96,7 @@ public class Contact {
 			if (f.hasCid()) setCid(f.getCid());
 			if (f.hasAdrId()) setAdrId(f.getAdrId());
 			if (f.hasName()) setName(f.getName());
-			if (f.hasWave()) setWave(f.getWave());
+			if (f.hasWave() || f.getWave() == null) setWave(f.getWave());
 			if (f.hasPhoneNum()) setPhoneNum(f.getPhoneNum());
 			if (f.hasLastCallId()) setLastCallId(f.getLastCallId());
 		}
@@ -147,7 +152,6 @@ public class Contact {
 	public static void delete(long adrId) {
 		initDb();
 		
-		Log.i(TAG, "Removing contact #" + adrId);
 		database.removeContact(adrId);
 	}
 	
@@ -158,9 +162,7 @@ public class Contact {
 	 * 
 	 * @return an empty Contact
 	 */
-	public static Contact skeleton() {
-		return new Contact();
-	}
+	public static Contact skeleton() { return new Contact(); }
 	
 	public static Contact loadByAdrId(long adrId) {
 		initDb();
@@ -202,12 +204,13 @@ public class Contact {
 	public Wave 		getWave() { return fields.getWave(); }
 	public String 		getPhoneNum() { return fields.getPhoneNum(); }
 	public boolean 	hasName() { return fields.hasName(); }
+	public boolean		hasWave() { return fields.hasWave(); }
 
 	public ContentValues cv() {
 		ContentValues cv = new ContentValues();
 
-		cv.put("uid", fields.getAdrId());
-		cv.put("wave", (fields.getWave() == null) ? null : fields.getWave().getId());
+		cv.put("uid", getAdrId());
+		cv.put("wave", (hasWave()) ? getWave().getId() : null);
 		cv.put("lastCallId", fields.getLastCallId());
 
 		return cv;
@@ -215,34 +218,42 @@ public class Contact {
 
 	@Override
 	public String toString() {
-		return fields.getName() + " [adr #" + 
-			fields.getAdrId() + "]";
+		return fields.getName() + " [adr #" + fields.getAdrId() + "]";
 	}
+	
+	public long getLatestTimestamp() { return fields.getLatestTimestamp(); }
 
 	public String getSubtext() {
-		if (fields.getLatestTimestamp() == Contact.Fields.DEFAULT_TIMESTAMP) {
-			return "No contact.";
-		}
+		// TODO: Streamline fetching of latest timestamp.  Currently being done
+		// in too many places.
+		if (!fields.hasTimeStamp()) return "No contact.";
+
 		long lts = fields.getLatestTimestamp();
-		
 		SimpleDateFormat lastContact = new SimpleDateFormat("MM/dd/yyyy");
 		String d = lastContact.format(new Date((long)lts * 1000));
 		
+		// TODO: Create secondsPerPeriod constant to replace hard-coded 86400.
 		double numDays = Math.floor(
 			((System.currentTimeMillis() / 1000.0) - lts) / 86400
-			);
+		);
 		
 		return ((int) numDays == 0) ?
 			"Last contacted on " + d + " (< 1 day ago)" :
 			"Last contacted on " + d + " (" + (int)numDays + " days ago)";
 	}
 	
+	/**
+	 * Computes the score [0.0 - 10.0] measuring how close a particular contact
+	 * is to the desired contact window.  If a negative number is returned then
+	 * the user does not have membership in a wave and the true score can't be
+	 * computed.
+	 * 
+	 * @return
+	 */
 	public double getScore() {
-		// TODO: This probably doesn't need to be called this frequently.
-		if (!fields.hasTimeStamp()) fields.getLatestTimestamp();
+		// If the user isn't part of a wave, don't show a score.
+		if (!fields.hasWave()) return -1.0;
 		
-		// If the user isn't part of a wave, their score will always be zero.
-		if (!fields.hasWave()) return 0.0;
 		// If the timestamp hasn't been set, assume that no contact has been made.
 		// We'll make this a top priority item.
 		if (!fields.hasTimeStamp()) return 10.0;
@@ -250,9 +261,9 @@ public class Contact {
 		long currentTime = System.currentTimeMillis() / 1000;
 		// FRACTION will always be >= 0
 		double fraction = (currentTime - fields.getLatestTimestamp())
-			/ (fields.getWave().getWaveLength() * 1.0);
+			/ (getWave().getWaveLength() * 1.0);
+		
 		double score = Math.round(fraction * 100) / 10.0;
-
-		return (score <= 10.0) ? score : 10.0;
+		return Math.min(score, 10.0);
 	}
 }

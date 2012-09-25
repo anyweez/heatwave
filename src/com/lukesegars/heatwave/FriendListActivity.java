@@ -7,7 +7,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.app.ListActivity;
 import android.content.Intent;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -37,7 +36,6 @@ public class FriendListActivity extends ListActivity {
 		registerForContextMenu(getListView());
         
         setContentView(R.layout.activity_friend_list);
-        long startTime = System.currentTimeMillis();
 
         ArrayList<Contact> contacts = new ArrayList<Contact>();
         
@@ -117,7 +115,10 @@ public class FriendListActivity extends ListActivity {
     	// Remove all contacts and re-add them.
     	adapter.clear();
     	
+    	// Read the latest timestamps for all contacts and add them to the list
+    	// adapter.
     	for (Contact contact : contacts) {
+    		contact.getLatestTimestamp();
     		adapter.add(contact);
     	}
     	

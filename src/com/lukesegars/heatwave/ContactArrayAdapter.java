@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -40,8 +41,14 @@ public class ContactArrayAdapter extends ArrayAdapter<Contact> {
 		// Generate the gauge for the contact.
 		TextView contactGauge = (TextView)itemView.findViewById(R.id.contact_gauge);
 		
+		// TODO: Replace this will a non-deprecated method.
 		contactGauge.setBackgroundDrawable(getContactGauge(contact));
-		contactGauge.setText(String.valueOf(contact.getScore()));
+		
+		double score = contact.getScore();
+		// TODO: Checking for >= 0.0 may not be adequate...edge cases may
+		// provide a very small value for score that gets very close to zero.
+		if (score >= 0.0) {	contactGauge.setText(String.valueOf(score)); }
+		else { contactGauge.setText("N/A"); }
 		
 		// Populate all of the text fields.
 		TextView contactTitle = (TextView)itemView.findViewById(R.id.contact_name);
@@ -52,7 +59,7 @@ public class ContactArrayAdapter extends ArrayAdapter<Contact> {
 		contactSubtitle.setText(contact.getSubtext());
 
 		Wave cWave = contact.getWave();
-		contactNote.setText( (cWave != null) ? cWave.getName() : "[none]" );
+		contactNote.setText( contact.hasWave() ? cWave.getName() : "[none]" );
 		
 		return itemView;
 	}
@@ -70,7 +77,7 @@ public class ContactArrayAdapter extends ArrayAdapter<Contact> {
 		int[] max_cold = new int[] { 20, 40, 125 };
 		int[] max_warm = new int[] { 245, 40, 15 };
 		
-		double ratio = contact.getScore() / 10.0;
+		double ratio = Math.max(contact.getScore(), 0.0) / 10.0;
 		double inv = 1 - ratio;
 		
 		int r = (int)Math.round((max_warm[0] * ratio) + (max_cold[0] * inv));

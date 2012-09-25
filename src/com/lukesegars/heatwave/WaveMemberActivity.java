@@ -75,11 +75,16 @@ public class WaveMemberActivity extends ListActivity {
 			ContactsContract.Contacts.DISPLAY_NAME
 		};
 
-		Cursor cursor = managedQuery(uri, 
+		Cursor cursor = getContentResolver().query(uri, 
 			projection, 
 			ContactsContract.Contacts.HAS_PHONE_NUMBER + " = 1", 
 			null, 
 			ContactsContract.Contacts.DISPLAY_NAME + " ASC");
+//		Cursor cursor = managedQuery(uri, 
+//			projection, 
+//			ContactsContract.Contacts.HAS_PHONE_NUMBER + " = 1", 
+//			null, 
+//			ContactsContract.Contacts.DISPLAY_NAME + " ASC");
 		
 		ListView lv = getListView();
 		// Configure the adapter for the ListView.
@@ -95,7 +100,6 @@ public class WaveMemberActivity extends ListActivity {
 
 			// Fetch the wave information for the current contact.
 			Contact c = Contact.loadByAdrId(adrId);
-//			Contact c = database.fetchContact(cid);
 			if (c != null) {
 				Wave w = c.getWave();
 
@@ -108,7 +112,7 @@ public class WaveMemberActivity extends ListActivity {
 			}
 			cursor.moveToNext();
 		}
-
+		cursor.close();
 		adapter.notifyDataSetChanged();
 	}
 	
@@ -127,8 +131,8 @@ public class WaveMemberActivity extends ListActivity {
 		for (Integer cid : inactives) {
 			Contact c = Contact.loadByAdrId(cid);
 			Contact.Fields cf = c.new Fields();
-			
-			cf.setWave(wave);
+
+			cf.setWave(null);
 			c.modify(cf);
 		}
 		

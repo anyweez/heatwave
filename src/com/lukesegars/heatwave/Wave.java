@@ -2,6 +2,7 @@ package com.lukesegars.heatwave;
 
 import android.content.ContentValues;
 import android.content.Context;
+import android.util.Log;
 
 public class Wave {
 	// The number of seconds per unit entered in the UI.  The UI currently
@@ -11,24 +12,28 @@ public class Wave {
 	public class Fields {
 		private static final int DEFAULT_ID = -1;
 		private static final int DEFAULT_WAVELENGTH = -1;
+		private static final String DEFAULT_NAME = "";
 		
 		private int id = DEFAULT_ID;
-		private String name = null;
+		private String name = DEFAULT_NAME;
 		private int waveLength = DEFAULT_WAVELENGTH;
 		
+		public boolean hasId() { return id != DEFAULT_ID; }
 		public int getId() { return id; }
 		public void setId(int i) { id = i; }
 		
+		public boolean hasName() { return name != DEFAULT_NAME; }
 		public String getName() { return name; }
 		public void setName(String n) { name = n; }
 		
+		public boolean hasWaveLength() { return waveLength != DEFAULT_WAVELENGTH; }
 		public int getWavelength() { return waveLength; }
 		public void setWavelength(int wl) { waveLength = wl; }
 		
 		protected void modify(Wave.Fields f) {
-			if (f.getId() != DEFAULT_ID) setId(f.getId());
-			if (f.getName() != null) setName(f.getName());
-			if (f.getWavelength() != DEFAULT_WAVELENGTH) setWavelength(f.getWavelength());
+			if (f.hasId()) setId(f.getId());
+			if (f.hasName()) setName(f.getName());
+			if (f.hasWaveLength()) setWavelength(f.getWavelength());
 		}
 	}
 
@@ -46,6 +51,8 @@ public class Wave {
 	public static void setContext(Context c) {
 		context = c;
 	}
+	
+	protected boolean hasName() { return fields.hasName(); }
 	
 	//////////////////////////////
 	/// Static factory methods ///
@@ -76,15 +83,15 @@ public class Wave {
 		return database.fetchWave(id);
 	}
 	
-	public static Wave skeleton() {
-		return new Wave();
-	}
+	public static Wave skeleton() { return new Wave(); }
 	
 	////////////////////////////
 	/// Private constructors ///
 	////////////////////////////
 	
-	private Wave() {}
+	private Wave() {
+		fields = new Wave.Fields();
+	}
 	
 	private Wave(Wave.Fields f) {
 		fields = f;
@@ -146,22 +153,17 @@ public class Wave {
 	 */
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		
+		if (this == obj) return true;
+		if (obj == null) return false;
+		if (getClass() != obj.getClass()) return false;
+
 		Wave other = (Wave) obj;
 		
-		if (fields.getName() == null) {
-			if (other.getName() != null)
-				return false;
-		} else if (!getName().equals(other.getName()))
-			return false;
-		if (fields.getWavelength() != other.fields.getWavelength())
-			return false;
+		// TODO: Not sure if this first condition is accurate...
+		if (!fields.hasName() || !other.hasName()) return false;
+		if (!getName().equals(other.getName())) return false;
+		if (fields.getWavelength() != other.getWaveLength()) return false;
+		
 		return true;
 	}
 
