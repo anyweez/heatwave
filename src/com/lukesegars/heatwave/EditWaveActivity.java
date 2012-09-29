@@ -1,10 +1,11 @@
 package com.lukesegars.heatwave;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.InputType;
-import android.util.Log;
 import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
@@ -25,8 +26,29 @@ public class EditWaveActivity extends Activity {
 		
 		setButtonListeners();
 		Bundle extras = getIntent().getExtras();
+		
+		// If a wave was specified, attach a listener to the delete button.
 		if ( extras != null && extras.containsKey("waveId") ) {
 			preloadWave(extras.getInt("waveId"));
+
+			Button btn = (Button)findViewById(R.id.delete_wave_btn);
+			btn.setOnClickListener(new View.OnClickListener() {
+				public void onClick(View v) {
+					database.removeWave(target);
+					
+					Intent intent = new Intent(getApplicationContext(), DisplayWaveActivity.class);
+					startActivity(intent);
+				}
+			});
+		}
+		// If no wave was specified, we're creating a new one and the delete button
+		// makes no sense.  Hide it.
+		else {
+			Button btn = (Button)findViewById(R.id.delete_wave_btn);
+			btn.setVisibility(Button.INVISIBLE);
+			
+			TextView btn_lbl = (TextView)findViewById(R.id.delete_wave_warning);
+			btn_lbl.setVisibility(TextView.INVISIBLE);
 		}
 	}
 	
@@ -54,7 +76,7 @@ public class EditWaveActivity extends Activity {
 		
 		findViewById(R.id.save_btn).setOnClickListener(new View.OnClickListener() {
 			public void onClick(View v) {
-				HeatwaveDatabase db = HeatwaveDatabase.getInstance(v.getContext());
+//				HeatwaveDatabase db = HeatwaveDatabase.getInstance(v.getContext());
 				
 				EditText name_field = (EditText)v.getRootView().findViewById(R.id.wave_name);
 				EditText wl_field = (EditText)v.getRootView().findViewById(R.id.wave_length);

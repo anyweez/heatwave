@@ -3,12 +3,17 @@ package com.lukesegars.heatwave;
 import java.util.ArrayList;
 
 import android.app.ListActivity;
+import android.app.SearchManager;
+import android.app.DownloadManager.Query;
+import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.ContactsContract;
 import android.util.Log;
 import android.util.SparseBooleanArray;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -29,6 +34,8 @@ public class SelectContactsActivity extends ListActivity {
 		setContentView(R.layout.activity_select_contacts);
 		
 		getListView().setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
+		// Turn on type-to-search.
+		setDefaultKeyMode(DEFAULT_KEYS_SEARCH_LOCAL);
 		
 		Button sc_btn = (Button)findViewById(R.id.save_contacts_btn);
 		sc_btn.setOnClickListener(new View.OnClickListener() {
@@ -60,12 +67,31 @@ public class SelectContactsActivity extends ListActivity {
 		contactNames = new ArrayList<String>();
 		contactIds = new ArrayList<Integer>();
 		
-		loadAdrContacts();
+		loadAdrContacts(getIntent());
+	}
+	
+	@Override
+	protected void onNewIntent(Intent intent) {
+		setIntent(intent);
+		loadAdrContacts(intent);
 	}
 	
 	// TODO: Move this to database layer.
-	private void loadAdrContacts() {
-		Uri uri = ContactsContract.Contacts.CONTENT_URI;
+	private void loadAdrContacts(Intent intent) {
+		contactIds.clear();
+		contactNames.clear();
+		
+		String searchQuery = null;
+		if (intent.ACTION_SEARCH.equals(intent.getAction())) {
+			searchQuery = intent.getStringExtra(SearchManager.QUERY);
+		}
+		
+		if (searchQuery != null) Log.i(TAG, "Searching for " + searchQuery);
+		else Log.i(TAG, "No search query provided.");
+		
+		Uri uri = (searchQuery == null) ? ContactsContract.Contacts.CONTENT_URI :
+			Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_FILTER_URI, searchQuery);
+		
 		String[] projection = new String[] {
 			ContactsContract.Contacts._ID,
 			ContactsContract.Contacts.DISPLAY_NAME
@@ -94,6 +120,7 @@ public class SelectContactsActivity extends ListActivity {
 		
 		ArrayList<Integer> actives = database.getActiveContactAdrIds();
 		
+		// TODO: Optimize this.
 		// For each active ID, check to see if the contact ID
 		for (int i = 0; i < contactIds.size(); i++) {
 			if (actives.contains(contactIds.get(i))) lv.setItemChecked(i, true);
@@ -110,6 +137,26 @@ public class SelectContactsActivity extends ListActivity {
 		// 2. Delete all of the Contacts that are no longer on the list.
 		for (Integer id : inactives) Contact.delete(id);
 	}
+	
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.activity_select_contacts, menu);
+        return true;
+    }
+    
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+    	switch (item.getItemId()) {
+    		case R.id.menu_search_contacts:
+//    			startActivity(
+//    				new Intent(this, SelectContactsActivity.class)
+//    			);
+    			onSearchRequested();
+    			return true;
+    		default:
+    			return super.onOptionsItemSelected(item);
+    	}
+    }
 	
 	@Override
 	protected void onPause() {

@@ -491,6 +491,7 @@ public class HeatwaveDatabase {
 	 * 
 	 * TODO: Can this be made more efficient?
 	 * TODO: Add ContactNotFoundException's as needed.
+	 * TODO: Useful optimization? http://stackoverflow.com/questions/7520635/optimize-contentprovider-query-for-retrieve-contact-names-and-phones
 	 * 
 	 * @return
 	 * @throws Exception 
@@ -613,7 +614,7 @@ public class HeatwaveDatabase {
 			return null;
 	}
 
-	public boolean removeWave(Wave target) {
+	public void removeWave(Wave target) {
 		// Delete the wave.
 		boolean wave = (database.delete(HeatwaveOpenHelper.WAVE_TABLE_NAME,
 			"_id = ?",
@@ -627,8 +628,6 @@ public class HeatwaveDatabase {
 			cv,
 			"wave = ?",
 			new String[] { String.valueOf(target.getId()) })) > 0;
-			
-		return wave && contacts;
 	}
 	
 	public void updateWave(Wave w) {

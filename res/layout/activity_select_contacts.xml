@@ -33,6 +33,7 @@
         android:layout_width="fill_parent"
         android:layout_height="wrap_content" 
         android:layout_alignParentTop="true" 
+        android:fastScrollEnabled="true"
         android:layout_above="@id/button_bar" />
 
     <TextView
@@ -42,5 +43,4 @@
         android:layout_height="wrap_content"
         android:layout_above="@id/button_bar" 
         android:text="@string/empty_phone_book" />
-
 </RelativeLayout>

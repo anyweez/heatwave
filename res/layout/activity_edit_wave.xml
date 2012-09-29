@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -9,41 +9,83 @@
     android:orientation="vertical" >
 
     <TextView
-        android:id="@+id/textView1"
+        android:id="@+id/edit_wave_intro"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:textColor="#999"
+        android:gravity="center_horizontal"
+        android:layout_margin="10dp"
+        android:layout_alignParentTop="true"
+    	android:text="Waves are used to categorize people based on how often you want to contact them." />
+    
+    <TextView
+        android:id="@+id/wave_name_label"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginLeft="10dp"
+        android:layout_marginBottom="2dp"
+        android:layout_below="@id/edit_wave_intro"
         android:text="Wave Name" />
 
     <EditText
         android:id="@+id/wave_name"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:ems="10" 
+        android:layout_marginLeft="10dp"
+        android:layout_marginRight="10dp"
+        android:layout_below="@id/wave_name_label"
         android:inputType="textCapSentences" >
 
         <requestFocus />
     </EditText>
 
     <TextView
-        android:id="@+id/textView2"
+        android:id="@+id/wave_length_label"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginLeft="10dp"
+        android:layout_marginBottom="2dp"
+        android:layout_below="@id/wave_name"
         android:text="Contact frequency (days)" />
 
     <EditText
         android:id="@+id/wave_length"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:ems="10" 
+        android:layout_marginLeft="10dp"
+        android:layout_marginRight="10dp"
+        android:layout_below="@id/wave_length_label"
+        android:ems="4"
         android:inputType="text" />
+    
+    <TextView
+        android:id="@+id/delete_wave_warning"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:textColor="#999"
+        android:gravity="center_horizontal"
+        android:layout_margin="10dp"
+        android:layout_below="@id/wave_length"
+    	android:text="The button below will permanently delete this wave.  All contacts will remain intact but will be removed from the wave." />    
+    
+    <Button
+        android:id="@+id/delete_wave_btn"
+        android:layout_marginLeft="10dp"
+        android:layout_marginRight="10dp"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/delete_wave_warning"
+        android:text="Delete Wave" />
     
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content" 
+        android:layout_alignParentBottom="true"
         android:weightSum="100">
 
         <Button
             android:id="@+id/cancel_btn"
+        	android:layout_marginLeft="10dp"
             android:layout_width="0dip"
             android:layout_height="wrap_content"
             android:layout_weight="50"
@@ -51,10 +93,11 @@
         
         <Button
             android:id="@+id/save_btn"
+        	android:layout_marginRight="10dp"
             android:layout_width="0dip"
             android:layout_height="wrap_content"
             android:layout_weight="50"
             android:text="Save" />
     </LinearLayout>
 
-</LinearLayout>
+</RelativeLayout>

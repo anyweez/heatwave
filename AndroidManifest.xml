@@ -42,7 +42,16 @@
         </activity>
         <activity
             android:name=".SelectContactsActivity"
-            android:label="@string/title_select_contacts" />
+            android:label="@string/title_select_contacts"
+			android:launchMode="singleTop">
+        	<intent-filter>
+        	    <action android:name="android.intent.action.SEARCH" />
+        	</intent-filter>    
+        	<meta-data android:name="android.app.searchable"
+        	    android:resource="@xml/searchable" />
+        	<meta-data android:name="android.app.default_searchable"
+                android:value=".SelectContactsActivity" />
+        </activity>
         <activity
             android:name=".WaveMemberActivity"
             android:label="Select wave members" />
