@@ -5,22 +5,13 @@ import java.util.ArrayList;
 import android.app.ListActivity;
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
-import android.view.ContextMenu;
-import android.view.ContextMenu.ContextMenuInfo;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.Button;
-import android.widget.ListAdapter;
 import android.widget.ListView;
 
 public class DisplayWaveActivity extends ListActivity {
 	private static final String TAG = "DisplayWaveActivity";
-//	private static final int MENU_WAVE_EDIT = 0;
-//	private static final int MENU_WAVE_DELETE = 1;
 	
 	private HeatwaveDatabase database;
 	private WaveArrayAdapter waveAdapter;
@@ -30,7 +21,7 @@ public class DisplayWaveActivity extends ListActivity {
 	protected void onCreate(Bundle saved) {
 		super.onCreate(saved);
 		setContentView(R.layout.activity_display_waves);
-		registerForContextMenu(getListView());
+//		registerForContextMenu(getListView());
 
 		database = HeatwaveDatabase.getInstance(this);
 		

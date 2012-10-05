@@ -1,6 +1,7 @@
 package com.lukesegars.heatwave;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import android.content.ContentValues;
 import android.content.Context;
@@ -36,12 +37,13 @@ public class HeatwaveDatabase {
 	 * class.
 	 */
 	private static class HeatwaveOpenHelper extends SQLiteOpenHelper {
-		private static final int DATABASE_VERSION = 3;
+		private static final int DATABASE_VERSION = 4;
 		private static final String DATABASE_NAME = "heatwave";
 		private static final String WAVE_TABLE_NAME = "waves";
 		private static final String CONTACTS_TABLE_NAME = "contacts";
+		private static final String SNOOZE_TABLE_NAME = "snooze";
 
-		private static final String WAVE_TABLE_CREATE = "CREATE TABLE " +
+		private static final String WAVE_TABLE_CREATE = "CREATE TABLE IF NOT EXISTS " +
 				WAVE_TABLE_NAME + 
 				" (_id INTEGER PRIMARY KEY AUTOINCREMENT, " + // primary key
 				"name TEXT, " +          // name of the wave
@@ -49,7 +51,7 @@ public class HeatwaveDatabase {
   										 // seconds)
 				"lastContact TEXT)";
 
-		private static final String CONTACTS_TABLE_CREATE = "CREATE TABLE " + 
+		private static final String CONTACTS_TABLE_CREATE = "CREATE TABLE IF NOT EXISTS " + 
 				CONTACTS_TABLE_NAME +
 				" (_id INTEGER PRIMARY KEY AUTOINCREMENT, " + // primary key
 				"uid INTEGER, " +   // system-level user ID (Android contact ID)
@@ -57,6 +59,13 @@ public class HeatwaveDatabase {
 									// only be in one wave at a time.
 				"lastCallId INTEGER)";	// the CallLog ID of the last call that was
 
+		private static final String SNOOZE_TABLE_CREATE = "CREATE TABLE IF NOT EXISTS " +
+				SNOOZE_TABLE_NAME +
+				" (_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+				"uid INTEGER, " + 
+				"timestamp INTEGER, " +
+				"percentage INTEGER)";
+		
 		public HeatwaveOpenHelper(Context context) {
 			super(context, DATABASE_NAME, null, DATABASE_VERSION);
 		}
@@ -68,6 +77,7 @@ public class HeatwaveDatabase {
 		public void onCreate(SQLiteDatabase db) {
 			db.execSQL(WAVE_TABLE_CREATE);
 			db.execSQL(CONTACTS_TABLE_CREATE);
+			db.execSQL(SNOOZE_TABLE_CREATE);
 		}
 
 		/**
@@ -79,8 +89,9 @@ public class HeatwaveDatabase {
 		 */
 		@Override
 		public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-			db.execSQL("DROP TABLE IF EXISTS " + WAVE_TABLE_NAME);
-			db.execSQL("DROP TABLE IF EXISTS " + CONTACTS_TABLE_NAME);
+//			db.execSQL("DROP TABLE IF EXISTS " + WAVE_TABLE_NAME);
+//			db.execSQL("DROP TABLE IF EXISTS " + CONTACTS_TABLE_NAME);
+			db.execSQL("DROP TABLE IF EXISTS " + SNOOZE_TABLE_NAME);
 
 			onCreate(db);
 		}
@@ -755,5 +766,43 @@ public class HeatwaveDatabase {
 			}
 			return phoneNum;
 		}
+	}
+	
+	/**
+	 * Returns a mapping of user ID's to most recent snooze event.
+	 * Note that this does not report snooze percentages because they
+	 * are not implemented yet.
+	 * 
+	 * @return
+	 */
+	public HashMap<Long, Long> getSnoozeLog() {
+		HashMap<Long, Long> snooze = new HashMap<Long, Long>();
+		
+		Cursor c = database.query(HeatwaveOpenHelper.SNOOZE_TABLE_NAME, 
+			new String[] {
+				"uid",
+				"timestamp"
+			}, null, null, null, null, "timestamp DESC"
+		);
+		
+		c.moveToFirst();
+		while (!c.isAfterLast()) {
+			long uid = c.getLong(0);
+			if (!snooze.containsKey(uid)) snooze.put(uid, c.getLong(1));
+			
+			c.moveToNext();
+		}
+		
+		c.close();
+		return snooze;
+	}
+	
+	public void addSnoozeRecord(Contact c, long timestamp) {
+		ContentValues cv = new ContentValues();
+		cv.put("uid", c.getAdrId());
+		cv.put("timestamp", timestamp);
+		cv.put("percentage", 100);
+		
+		database.insert(HeatwaveOpenHelper.SNOOZE_TABLE_NAME, null, cv);
 	}
 }

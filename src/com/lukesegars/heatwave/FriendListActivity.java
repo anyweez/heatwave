@@ -5,11 +5,17 @@ import java.util.Comparator;
 
 import android.net.Uri;
 import android.os.Bundle;
+import android.app.AlertDialog;
 import android.app.ListActivity;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.util.Log;
+import android.view.ContextMenu;
+import android.view.ContextMenu.ContextMenuInfo;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ListView;
 
 import net.hockeyapp.android.CrashManager;
@@ -17,7 +23,8 @@ import net.hockeyapp.android.UpdateManager;
 
 public class FriendListActivity extends ListActivity {
 	private static final String TAG = "FriendListActivity";
-
+	private Contact contextTarget = null;
+	
 	// Added before
 	private CallLogMonitor clm = new CallLogMonitor(null);
 	
@@ -33,7 +40,6 @@ public class FriendListActivity extends ListActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         storeObjectContext();
-		registerForContextMenu(getListView());
         
         setContentView(R.layout.activity_friend_list);
 
@@ -52,6 +58,7 @@ public class FriendListActivity extends ListActivity {
 			true, 
 			clm);
 
+		registerForContextMenu(getListView());
 		// Hockey.net
 	    checkForUpdates();
     }
@@ -65,6 +72,82 @@ public class FriendListActivity extends ListActivity {
     	updateContactList();
 
         checkForCrashes();
+    }
+    
+    @Override
+    public void onCreateContextMenu(ContextMenu cm, View v, ContextMenuInfo cmi) {
+    	super.onCreateContextMenu(cm, v, cmi);
+    	getMenuInflater().inflate(R.menu.context_friend_list, cm);
+    	
+    	AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) cmi;
+    	ContactArrayAdapter adapter = (ContactArrayAdapter)getListAdapter();
+    	contextTarget = adapter.getItem(info.position);
+    	
+    	// Set the title to be the user's name.
+    	cm.setHeaderTitle(contextTarget.getName());
+    }
+    
+    @Override
+	public boolean onContextItemSelected(MenuItem item) {
+//    	AdapterView.AdapterContextMenuInfo info = 
+//    		(AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
+
+    	switch (item.getItemId()) {
+    		case R.id.ctx_select_wave:
+    			// FIXME: launch wave selection activity.
+//    			getMenuInflater().inflate(R.menu.ctx_choose_wave, item.)
+    			
+    			// 1. Get all waves.
+    			// 2. Generate dialog.
+    			// 3. Update contact in ListAdapter and database.
+    			// 4. notify()
+    			final ArrayList<Wave> waves = Wave.loadAll();
+    			final String[] names = new String[waves.size()];
+    			for (int i = 0; i < waves.size(); i++) names[i] = waves.get(i).getName();
+    			
+    			AlertDialog.Builder dialog = new AlertDialog.Builder(this);
+    			dialog.setTitle("Select wave");
+    			dialog.setItems(names, new DialogInterface.OnClickListener() {
+					
+					public void onClick(DialogInterface dialog, int which) {
+						String name = names[which];
+						Wave selected = null;
+						for (int i = 0; i < waves.size(); i++) {
+							if (waves.get(i).getName().equals(name)) selected = waves.get(i);
+						}
+						
+						// If a wave was found with this name (which it always should be),
+						// save it.
+						if (selected != null) {
+							Contact.Fields fields = contextTarget.new Fields();
+							fields.setWave(selected);
+							contextTarget.modify(fields);
+
+							ContactArrayAdapter adapter = (ContactArrayAdapter)getListAdapter();
+					    	adapter.sort(listSorter);
+							// Notify the adapter that the data may have changed.
+							adapter.notifyDataSetChanged();
+						}
+					}
+				});
+    			dialog.show();
+    			break;
+    		case R.id.ctx_snooze_contact:
+    			// TODO: Check for null contextTarget.  If so, log it and abort add.
+    			//        Maybe consider adding Toast alert?
+    			// Store the snooze event.
+    			SnoozeMaster sm = SnoozeMaster.getInstance(getApplicationContext());
+    			sm.addSnooze(contextTarget, Math.round(System.currentTimeMillis() / 1000));
+    			
+    			// Update the UI.
+    			ContactArrayAdapter adapter = (ContactArrayAdapter)getListAdapter();
+    			adapter.sort(listSorter);
+    			adapter.notifyDataSetChanged();
+    			contextTarget = null;
+    			break;
+    	}
+
+    	return false;
     }
     
     @Override

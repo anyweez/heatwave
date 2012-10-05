@@ -10,23 +10,24 @@
     </style>
 
     <style name="ListItemTitle">
-        <item name="android:textSize">13.5dp</item>
+        <item name="android:textSize">14dp</item>
         <item name="android:paddingLeft">6dp</item>
         <item name="android:paddingTop">3dp</item>
     </style>
 
     <style name="ListItemSubtitle">
-        <item name="android:textSize">11.5dp</item>
+        <item name="android:textSize">12dp</item>
         <item name="android:paddingLeft">6dp</item>
         <item name="android:textColor">#666</item>
         <item name="android:paddingTop">2dp</item>
     </style>
     
     <style name="ListItemNote">
+        <item name="android:textSize">12dp</item>
         <item name="android:gravity">right|top</item>
 		<item name="android:paddingRight">6dp</item>
-        <item name="android:textColor">#aaa</item>
-        <item name="android:textSize">10sp</item>
+        <item name="android:paddingTop">3dp</item>
+        <item name="android:textColor">#ccc</item>
     </style>
     
     <style name="ContactGauge">

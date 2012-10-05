@@ -257,10 +257,24 @@ public class Contact {
 		// If the timestamp hasn't been set, assume that no contact has been made.
 		// We'll make this a top priority item.
 		if (!fields.hasTimeStamp()) return 10.0;
+		SnoozeMaster sm = SnoozeMaster.getInstance(context);
+		
+		if (sm.latestSnooze(this) > 0) {
+			Log.i(TAG, "Latest snooze: " + sm.latestSnooze(this));
+			Log.i(TAG, "Latest timestamp: " + fields.getLatestTimestamp());
+			long best = (sm.latestSnooze(this) > fields.getLatestTimestamp()) ? sm.latestSnooze(this) : fields.getLatestTimestamp();
+		
+			Log.i(TAG, "Best: " + best);
+		}
+		
+		// Get the time of the event that should set the standard for the score.
+		long latestTime = (sm.latestSnooze(this) > fields.getLatestTimestamp()) ?
+			sm.latestSnooze(this) :
+			fields.getLatestTimestamp();
 		
 		long currentTime = System.currentTimeMillis() / 1000;
 		// FRACTION will always be >= 0
-		double fraction = (currentTime - fields.getLatestTimestamp())
+		double fraction = (currentTime - latestTime)
 			/ (getWave().getWaveLength() * 1.0);
 		
 		double score = Math.round(fraction * 100) / 10.0;

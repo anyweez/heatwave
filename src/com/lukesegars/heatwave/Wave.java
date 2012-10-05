@@ -1,5 +1,7 @@
 package com.lukesegars.heatwave;
 
+import java.util.ArrayList;
+
 import android.content.ContentValues;
 import android.content.Context;
 import android.util.Log;
@@ -81,6 +83,10 @@ public class Wave {
 		initDb();
 		
 		return database.fetchWave(id);
+	}
+	
+	public static ArrayList<Wave> loadAll() {
+		return database.fetchWaves();
 	}
 	
 	public static Wave skeleton() { return new Wave(); }
