@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    style="@style/ListItemStyle"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:gravity="center_vertical"
+    android:orientation="horizontal" >
+    
+    <ImageView
+        android:id="@+id/edit_wave"
+        style="@style/EditIcon"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:paddingRight="8dp"
+        android:paddingLeft="8dp"
+        android:contentDescription="Edit Wave"
+        android:layout_alignParentRight="true" />
+    
+    <TextView
+        android:background="#999"
+        android:layout_width="1dp"
+        android:layout_height="fill_parent"
+		android:layout_toLeftOf="@id/edit_wave"
+        />
+    
+	<TextView
+    	android:id="@+id/wave_name"
+        style="@style/ListItemTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" 
+        android:layout_alignParentLeft="true" />
+
+	<TextView
+		android:id="@+id/wave_member_count"
+		style="@style/ListItemSubtitle"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content" 
+		android:layout_below="@id/wave_name"
+        android:layout_alignParentLeft="true" />  
+</RelativeLayout>

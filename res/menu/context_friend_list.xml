@@ -1,0 +1,16 @@
+<!--
+  This file defines the menu that shows up when the user is on the
+  DisplayWaveActivity and triggers the menu.
+-->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/ctx_snooze_contact"
+        android:orderInCategory="100"
+		android:icon="@drawable/add_wave"
+        android:title="Snooze contact" />
+	<item
+        android:id="@+id/ctx_select_wave"
+        android:orderInCategory="120"
+		android:icon="@drawable/add_wave"
+        android:title="Select wave" />
+</menu>
