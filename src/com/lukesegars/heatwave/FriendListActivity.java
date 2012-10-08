@@ -9,7 +9,6 @@ import android.app.AlertDialog;
 import android.app.ListActivity;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.util.Log;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.view.Menu;
@@ -94,13 +93,6 @@ public class FriendListActivity extends ListActivity {
 
     	switch (item.getItemId()) {
     		case R.id.ctx_select_wave:
-    			// FIXME: launch wave selection activity.
-//    			getMenuInflater().inflate(R.menu.ctx_choose_wave, item.)
-    			
-    			// 1. Get all waves.
-    			// 2. Generate dialog.
-    			// 3. Update contact in ListAdapter and database.
-    			// 4. notify()
     			final ArrayList<Wave> waves = Wave.loadAll();
     			final String[] names = new String[waves.size()];
     			for (int i = 0; i < waves.size(); i++) names[i] = waves.get(i).getName();
