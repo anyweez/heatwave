@@ -2,6 +2,8 @@ package com.lukesegars.heatwave;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import android.content.ContentValues;
 import android.content.Context;
@@ -142,11 +144,14 @@ public class HeatwaveDatabase {
 	 * insert the contact, including incomplete fields, into the table.
 	 * It will also not attempt to update pre-existing records.
 	 * 
-	 * This is a relatively low-level interface.  Consider using
-	 * @link Contact.create() when possible.
+	 * This is a relatively low-level interface.  Consider using 
+	 * Contact.create() when possible.
 	 * 
 	 * @param newContact
 	 * @return
+	 * 
+	 * TODO: If only looking for row #, get rid of the last fetchContact
+	 * call and just set the return value of db.insert to the ID of newContact.
 	 */
 	public Contact addContact(Contact newContact) {
 		database.insert(HeatwaveOpenHelper.CONTACTS_TABLE_NAME, 
@@ -354,8 +359,7 @@ public class HeatwaveDatabase {
 			new String[] {
 				Phone.NUMBER,
 			},
-			contactQuery.toString() + Data.MIMETYPE + 
-			" = '" + Phone.CONTENT_ITEM_TYPE + "'",
+			contactQuery.toString() + Data.MIMETYPE + " = '" + Phone.CONTENT_ITEM_TYPE + "'",
 			rawStr,
 			null
 		);
@@ -378,6 +382,8 @@ public class HeatwaveDatabase {
 		// The call must not be missed (either incoming or outgoing and received)
 		phoneNumQry.append(CallLog.Calls.TYPE + " != " + CallLog.Calls.MISSED_TYPE + " AND (");
 		
+		Pattern numeric = Pattern.compile("[0-9]+");
+		ArrayList<String> phoneNums = new ArrayList<String>();
 		// There will always be at least one iteration of this loop given that we've
 		// already checked to make sure that we're not at the end.
 		while (!c.isAfterLast()) {
@@ -385,19 +391,30 @@ public class HeatwaveDatabase {
 			// phone numbers are stored in is not standardized, so I'm going
 			// to reduce it to the lowest common denominator by removing
 			// weird symbols.
-			phoneNumQry.append(CallLog.Calls.NUMBER + " = " + c.getString(0)
+			String potentialPhone =  c.getString(0)
 				.replace("-", "")
 				.replace("+", "")
 				.replace("(", "")
 				.replace(")", "")
-				.replace(" ", "")
-			);
-			c.moveToNext();
+				.replace(" ", "");
 			
-			if (!c.isAfterLast()) phoneNumQry.append(" OR ");
-			else phoneNumQry.append(")");
+			// Check to see if the phone number is all numeric.  Syncing from external
+			// sources (Facebook, etc) will sometimes bring in characters, which is not
+			// OK.  It kills the query :-/
+			Matcher m = numeric.matcher(potentialPhone);
+			if (m.matches()) {
+				phoneNums.add(potentialPhone);
+			}
+			c.moveToNext();
 		}
 		c.close();
+		
+		for (int i = 0; i < phoneNums.size(); i++) {
+			phoneNumQry.append(CallLog.Calls.NUMBER + " = " + phoneNums.get(i));
+			
+			if (i != phoneNums.size() - 1) phoneNumQry.append(" OR ");
+			else phoneNumQry.append(")");
+		}
 		
 		// Scan through the call log for recent calls.
 		Cursor callCursor = context.getContentResolver().query(

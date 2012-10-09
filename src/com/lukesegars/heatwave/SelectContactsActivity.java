@@ -25,8 +25,8 @@ public class SelectContactsActivity extends ListActivity {
 	
 	private HeatwaveDatabase database;
 
-	private ArrayList<String> contactNames;
-	private ArrayList<Integer> contactIds;
+	private ArrayList<String> contactNames = new ArrayList<String>();
+	private ArrayList<Integer> contactIds = new ArrayList<Integer>();
 	
 	@Override
 	protected void onCreate(Bundle saved) {
@@ -63,9 +63,6 @@ public class SelectContactsActivity extends ListActivity {
 		});
 		
 		database = HeatwaveDatabase.getInstance(this);
-		
-		contactNames = new ArrayList<String>();
-		contactIds = new ArrayList<Integer>();
 		
 		loadAdrContacts(getIntent());
 	}
