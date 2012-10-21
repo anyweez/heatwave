@@ -434,7 +434,7 @@ public class HeatwaveDatabase {
 		// If there are no call records then either the user has never called 
 		// them or its been so long that it fell off the end of the logs.
 		// Either way we're stuck with assuming they've never called.
-		if (callCursor.isAfterLast()) return 0;
+		if (callCursor.isAfterLast()) return Contact.Fields.DEFAULT_TIMESTAMP;
 		
 		long callId = callCursor.getLong(0);
 		long lastCall = (Long.parseLong(callCursor.getString(1)) / 1000);

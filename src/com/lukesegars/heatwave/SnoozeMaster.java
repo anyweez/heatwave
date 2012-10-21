@@ -42,8 +42,8 @@ public class SnoozeMaster {
 		if (snoozeLog.containsKey(c.getAdrId())) {
 			return snoozeLog.get(c.getAdrId());
 		}
-		// If it doesn't, return -1 so the call log results won't be disrupted.
-		else return -1;
+		// If it doesn't, return DEFAULT_TIMESTAMPE so the call log results won't be disrupted.
+		else return Contact.Fields.DEFAULT_TIMESTAMP;
 	}
 	
 	private void refresh() {

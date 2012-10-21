@@ -21,7 +21,7 @@ public class Contact {
 	public class Fields {
 		protected static final long DEFAULT_CID = -1;
 		protected static final long DEFAULT_ADRID = -1;
-		protected static final long DEFAULT_TIMESTAMP = 0;
+		public static final long DEFAULT_TIMESTAMP = 0;
 		protected static final long DEFAULT_CALL_ID = -1;
 		protected static final String DEFAULT_NAME = "";
 		protected static final String DEFAULT_PHONE_NUM = "";
@@ -256,26 +256,21 @@ public class Contact {
 		
 		// If the timestamp hasn't been set, assume that no contact has been made.
 		// We'll make this a top priority item.
-		if (!fields.hasTimeStamp()) return 10.0;
 		SnoozeMaster sm = SnoozeMaster.getInstance(context);
-		
-		if (sm.latestSnooze(this) > 0) {
-			Log.i(TAG, "Latest snooze: " + sm.latestSnooze(this));
-			Log.i(TAG, "Latest timestamp: " + fields.getLatestTimestamp());
-			long best = (sm.latestSnooze(this) > fields.getLatestTimestamp()) ? sm.latestSnooze(this) : fields.getLatestTimestamp();
-		
-			Log.i(TAG, "Best: " + best);
-		}
-		
-		// Get the time of the event that should set the standard for the score.
-		long latestTime = (sm.latestSnooze(this) > fields.getLatestTimestamp()) ?
-			sm.latestSnooze(this) :
-			fields.getLatestTimestamp();
-		
+		long snooze = sm.latestSnooze(this);
+		long call = fields.getLatestTimestamp();
+
+		// Return max score if there are no snoozes and no calls.
+		if (snooze == call && call == Contact.Fields.DEFAULT_TIMESTAMP) return 10.0;
+	
+		long mostRecent = Math.max(snooze, call);
 		long currentTime = System.currentTimeMillis() / 1000;
-		// FRACTION will always be >= 0
-		double fraction = (currentTime - latestTime)
+		
+		double fraction = (currentTime - mostRecent)
 			/ (getWave().getWaveLength() * 1.0);
+		
+		// FRACTION will always be >= 0
+		if (fraction < 0.0) fraction = 0.0;
 		
 		double score = Math.round(fraction * 100) / 10.0;
 		return Math.min(score, 10.0);
