@@ -3,53 +3,7 @@
 
     <style name="AppTheme" parent="android:Theme.Holo" />
 
-    <style name="ListItemStyle">
-        <item name="android:paddingLeft">6dp</item>
-        <item name="android:paddingTop">4dp</item>
-        <item name="android:paddingBottom">4dp</item>
-    </style>
-
-    <style name="ListItemTitle">
-        <item name="android:textSize">14dp</item>
-        <item name="android:paddingLeft">6dp</item>
-        <item name="android:paddingTop">3dp</item>
-    </style>
-
-    <style name="ListItemSubtitle">
-        <item name="android:textSize">12dp</item>
-        <item name="android:paddingLeft">6dp</item>
-        <item name="android:textColor">#666</item>
-        <item name="android:paddingTop">2dp</item>
-    </style>
-    
-    <style name="ListItemNote">
-        <item name="android:textSize">12dp</item>
-        <item name="android:gravity">right|top</item>
-		<item name="android:paddingRight">6dp</item>
-        <item name="android:paddingTop">3dp</item>
-        <item name="android:textColor">#ccc</item>
-    </style>
-    
-    <style name="ContactGauge">
-        <item name="android:textSize">18dp</item>
-        <item name="android:textStyle">bold</item>
-        <item name="android:textColor">#fff</item>
-        <item name="android:shadowColor">#333</item>
-        <item name="android:shadowDx">1.2</item>
-        <item name="android:shadowDy">1.2</item>
-        <item name="android:shadowRadius">1.2</item>
-        <item name="android:gravity">center</item>
-        <item name="android:paddingRight">2dp</item>
-    </style>
-    
     <style name="EditIcon">
         <item name="android:src">@drawable/edit_wave_light</item>
     </style>
-    
-    <style name="NoInfo">
-        <item name="android:textSize">16dp</item>
-        <item name="android:textColor">#aaa</item>
-        <item name="android:gravity">center</item>
-    </style>
-
 </resources>

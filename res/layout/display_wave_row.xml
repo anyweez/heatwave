@@ -16,13 +16,6 @@
         android:contentDescription="Edit Wave"
         android:layout_alignParentRight="true" />
     
-    <TextView
-        android:background="#999"
-        android:layout_width="1dp"
-        android:layout_height="fill_parent"
-		android:layout_toLeftOf="@id/edit_wave"
-        />
-    
 	<TextView
     	android:id="@+id/wave_name"
         style="@style/ListItemTitle"

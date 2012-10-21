@@ -14,11 +14,58 @@
         android:layout_height="fill_parent"
         android:drawSelectorOnTop="false" />
 
-    <TextView
+    <LinearLayout
         android:id="@android:id/empty"
         style="@style/NoInfo"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:text="@string/empty_contact_list" />
+        android:orientation="vertical">
+        <TextView
+            android:text="Welcome to Heatwave!" 
+        	style="@style/NoInfoTitle"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"/>
+        
+        <LinearLayout
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:padding="5dp"
+            android:orientation="horizontal">
+            <ImageView
+                android:id="@+id/add_contacts_guide"
+                android:contentDescription="Manage contacts"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                style="@style/NoInfoImage"
+                android:background="@drawable/guide_image"
+                android:src="@drawable/manage_contacts"/>
+            <TextView
+            	android:text="Get started by adding contacts from your address book." 
+        		style="@style/NoInfoSub"
+            	android:layout_width="fill_parent"
+            	android:layout_height="wrap_content"/>
+        </LinearLayout>
+        
+        <LinearLayout
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:padding="5dp"
+            android:orientation="horizontal">
+            <ImageView
+                android:id="@+id/add_waves_guide"
+                android:contentDescription="Manage waves"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                style="@style/NoInfoImage"
+                android:background="@drawable/guide_image"
+                android:src="@drawable/manage_waves"/>
+            <TextView
+            	android:text="Then create at least one wave and add those contacts to the wave." 
+        		style="@style/NoInfoSub"
+            	android:layout_width="fill_parent"
+            	android:layout_height="wrap_content"/>
+        </LinearLayout>
+    </LinearLayout>
 
 </LinearLayout>

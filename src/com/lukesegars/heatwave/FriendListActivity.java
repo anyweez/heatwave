@@ -15,6 +15,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
+import android.widget.ImageView;
 import android.widget.ListView;
 
 import net.hockeyapp.android.CrashManager;
@@ -48,6 +49,7 @@ public class FriendListActivity extends ListActivity {
         	R.layout.display_contact_row,
         	contacts);
         
+        
         setListAdapter(listAdapter);
         
 		// Start call listener
@@ -57,6 +59,22 @@ public class FriendListActivity extends ListActivity {
 			true, 
 			clm);
 
+		// Add some click listeners to the images that show up on an empty
+		// listview.
+        ImageView awg = (ImageView)findViewById(R.id.add_waves_guide);
+        awg.setOnClickListener(new View.OnClickListener() {
+			public void onClick(View v) {
+        		launchWaveManager();
+			}
+        });
+        
+        ImageView acg = (ImageView)findViewById(R.id.add_contacts_guide);
+        acg.setOnClickListener(new View.OnClickListener() {
+			public void onClick(View v) {
+        		launchContactManager();
+			}
+        });
+		
 		registerForContextMenu(getListView());
 		// Hockey.net
 	    checkForUpdates();
@@ -69,7 +87,6 @@ public class FriendListActivity extends ListActivity {
     	// Update the list in case anything has changed.  This is now called
     	// for first load as well instead of calling in onStart() as well.
     	updateContactList();
-
         checkForCrashes();
     }
     
@@ -88,9 +105,6 @@ public class FriendListActivity extends ListActivity {
     
     @Override
 	public boolean onContextItemSelected(MenuItem item) {
-//    	AdapterView.AdapterContextMenuInfo info = 
-//    		(AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
-
     	switch (item.getItemId()) {
     		case R.id.ctx_select_wave:
     			final ArrayList<Wave> waves = Wave.loadAll();
@@ -211,17 +225,25 @@ public class FriendListActivity extends ListActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
     	switch (item.getItemId()) {
     		case R.id.menu_contacts:
-    			startActivity(
-    				new Intent(this, SelectContactsActivity.class)
-    			);
+    			launchContactManager();
     			return true;
     		case R.id.menu_waves:
-    			startActivity(
-    				new Intent(this, DisplayWaveActivity.class)
-    			);
+    			launchWaveManager();
     			return true;
     		default:
     			return super.onOptionsItemSelected(item);
     	}
+    }
+    
+    private void launchContactManager() {
+		startActivity(
+				new Intent(this, SelectContactsActivity.class)
+		);
+    }
+    
+    private void launchWaveManager() {
+		startActivity(
+			new Intent(this, DisplayWaveActivity.class)
+		);
     }
 }

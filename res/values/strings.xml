@@ -18,7 +18,7 @@
     
     <string name="empty_phone_book">Address book is empty.</string>
     <string name="empty_contact_list">No contacts added.</string>
-    <string name="empty_wave_list">No waves created.</string>
+    <string name="empty_wave_list">Add a wave to get started.</string>
     
     <string name="search_hint">Search contacts</string>
     <string name="search_contacts">Search</string>
