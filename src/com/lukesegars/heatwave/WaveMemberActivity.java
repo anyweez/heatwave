@@ -7,6 +7,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.ContactsContract;
+import android.util.Log;
 import android.util.SparseBooleanArray;
 import android.view.View;
 import android.widget.ArrayAdapter;
@@ -28,7 +29,6 @@ public class WaveMemberActivity extends ListActivity {
 	protected void onCreate(Bundle saved) {
 		super.onCreate(saved);
 		setContentView(R.layout.activity_select_contacts);
-		
 		getListView().setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
 		
 		Button sc_btn = (Button)findViewById(R.id.save_contacts_btn);
@@ -57,17 +57,20 @@ public class WaveMemberActivity extends ListActivity {
 			}
 		});
 		
+		long waveId = getIntent().getExtras().getLong("waveId");
 		database = HeatwaveDatabase.getInstance(this);
+		wave = database.fetchWave(waveId);
 		
 		contactNames = new ArrayList<String>();
 		contactIds = new ArrayList<Integer>();
-		
-		int waveId = getIntent().getExtras().getInt("waveId");
-		wave = database.fetchWave(waveId);
-		
+				
 		loadAdrContacts();
 	}
 	
+	/**
+	 * TODO: This should be moved into the HeatwaveDatabase.  It may also be 
+	 * possible to roll it into one of the pre-existing functions.
+	 */
 	private void loadAdrContacts() {
 		Uri uri = ContactsContract.Contacts.CONTENT_URI;
 		String[] projection = new String[] {
@@ -80,11 +83,6 @@ public class WaveMemberActivity extends ListActivity {
 			ContactsContract.Contacts.HAS_PHONE_NUMBER + " = 1", 
 			null, 
 			ContactsContract.Contacts.DISPLAY_NAME + " ASC");
-//		Cursor cursor = managedQuery(uri, 
-//			projection, 
-//			ContactsContract.Contacts.HAS_PHONE_NUMBER + " = 1", 
-//			null, 
-//			ContactsContract.Contacts.DISPLAY_NAME + " ASC");
 		
 		ListView lv = getListView();
 		// Configure the adapter for the ListView.
@@ -106,7 +104,7 @@ public class WaveMemberActivity extends ListActivity {
 				contactIds.add(adrId);
 				contactNames.add(cursor.getString(1));
 			
-				if (w != null && w.getId() == wave.getId()) {
+				if (w != null && w.getId() == wave.getId()) { 
 					lv.setItemChecked(cNum, true);
 				}
 			}
@@ -122,7 +120,8 @@ public class WaveMemberActivity extends ListActivity {
 		for (Integer cid : actives) {
 			Contact c = Contact.loadByAdrId(cid);
 			Contact.Fields cf = c.new Fields();
-			
+
+			Log.i(TAG, "Adding " + c.getName() + " to wave " + wave.getName());
 			cf.setWave(wave);
 			c.modify(cf);
 		}
@@ -132,10 +131,10 @@ public class WaveMemberActivity extends ListActivity {
 			Contact c = Contact.loadByAdrId(cid);
 			Contact.Fields cf = c.new Fields();
 
+			Log.i(TAG, "Adding " + c.getName() + " to wave.");
 			cf.setWave(null);
 			c.modify(cf);
 		}
-		
 	}
 	
 	@Override

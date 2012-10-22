@@ -12,17 +12,17 @@ public class Wave {
 	public static final int SECONDS_PER_UNIT = 86400;
 	
 	public class Fields {
-		private static final int DEFAULT_ID = -1;
+		private static final long DEFAULT_ID = -1;
 		private static final int DEFAULT_WAVELENGTH = -1;
 		private static final String DEFAULT_NAME = "";
 		
-		private int id = DEFAULT_ID;
+		private long id = DEFAULT_ID;
 		private String name = DEFAULT_NAME;
 		private int waveLength = DEFAULT_WAVELENGTH;
 		
 		public boolean hasId() { return id != DEFAULT_ID; }
-		public int getId() { return id; }
-		public void setId(int i) { id = i; }
+		public long getId() { return id; }
+		public void setId(long i) { id = i; }
 		
 		public boolean hasName() { return name != DEFAULT_NAME; }
 		public String getName() { return name; }
@@ -74,8 +74,12 @@ public class Wave {
 		wf.setWavelength(wl);
 
 		w.modify(wf, false);
-		database.addWave(w);
+		long id = database.addWave(w);
 
+		Wave.Fields wf2 = w.new Fields();
+		wf2.setId(id);
+		w.modify(wf2, false);
+		
 		return w;
 	}
 	
@@ -86,6 +90,7 @@ public class Wave {
 	}
 	
 	public static ArrayList<Wave> loadAll() {
+		initDb();
 		return database.fetchWaves();
 	}
 	
@@ -118,7 +123,7 @@ public class Wave {
 		modify(f, true);
 	}
 	
-	public int getId() {
+	public long getId() {
 		return fields.getId();
 	}
 	

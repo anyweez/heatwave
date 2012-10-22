@@ -222,6 +222,7 @@ public class HeatwaveDatabase {
 			activeContacts.add(c.getInt(0));
 			c.moveToNext();
 		}
+		c.close();
 
 		return activeContacts;		
 	}
@@ -308,7 +309,9 @@ public class HeatwaveDatabase {
 			adr_projection, "_id = ?", 
 			new String[] { String.valueOf(cf.getAdrId()) }, 
 			null);
-			
+		
+		if (adrCursor == null) return null;
+		
 		adrCursor.moveToFirst();
 
 		// If any results were found then update the fields in the Contact
@@ -367,11 +370,9 @@ public class HeatwaveDatabase {
 		// There will be at least one phone number for the user because Heatwave
 		// doesn't let you add users that you don't have phone numbers for (see
 		// SelectContactsActivity.loadAdrContacts().
-		c.moveToFirst();
-		
 		// If no phone numbers exist then return zero (it is impossible that
 		// they are a contact that we've contacted on this device).
-		if (c.isAfterLast()) return 0;
+		if (c == null || !c.moveToFirst()) return 0;
 		
 		// Build a query string with all of the phone numbers.
 		StringBuilder phoneNumQry = new StringBuilder();
@@ -429,13 +430,11 @@ public class HeatwaveDatabase {
 			},
 			android.provider.CallLog.Calls.DATE + " DESC LIMIT 1");
 
-		callCursor.moveToFirst();
-
 		// If there are no call records then either the user has never called 
 		// them or its been so long that it fell off the end of the logs.
 		// Either way we're stuck with assuming they've never called.
-		if (callCursor.isAfterLast()) return Contact.Fields.DEFAULT_TIMESTAMP;
-		
+		if (callCursor == null || !callCursor.moveToFirst()) return Contact.Fields.DEFAULT_TIMESTAMP;
+
 		long callId = callCursor.getLong(0);
 		long lastCall = (Long.parseLong(callCursor.getString(1)) / 1000);
 
@@ -453,36 +452,6 @@ public class HeatwaveDatabase {
 		callCursor.close();
 		return lastCall;
 	}
-	
-	/**
-	 * Only intended to be used as a debugging method.  Performs a
-	 * direct database query to get the display name for the Android
-	 * ID that is provided.  Very little error checking is performed
-	 * here.
-	 * 
-	 * Don't use this in production.  It's both ugly and unstable.
-	 * 
-	 * @param adrId
-	 * @return
-	 */
-//	private String getName(int adrId) {
-//		Uri uri = ContactsContract.Contacts.CONTENT_URI;
-//		String[] adr_projection = new String[] { 
-//			ContactsContract.Contacts.DISPLAY_NAME 
-//		};
-//
-//		// Query to find the contact's name from the Android contact registry.
-//		Cursor adrCursor = context.getContentResolver().query(uri,
-//			adr_projection, "_id = ?", 
-//			new String[] { String.valueOf(adrId) }, 
-//			null);
-//			
-//		adrCursor.moveToFirst();
-//		String name = adrCursor.getString(0);
-//		adrCursor.close();
-//		
-//		return name;
-//	}
 	
 	/**
 	 * Get a list of all of the raw contact ID's for the contact info that's
@@ -503,11 +472,13 @@ public class HeatwaveDatabase {
 		
 		ArrayList<Long> raws = new ArrayList<Long>();
 		
-		c.moveToFirst();
-		while (!c.isAfterLast()) {
-			raws.add(c.getLong(0));
-			c.moveToNext();
+		if (c != null && c.moveToFirst()) { 
+			while (!c.isAfterLast()) {
+				raws.add(c.getLong(0));
+				c.moveToNext();
+			}
 		}
+		c.close();
 		
 		return raws;
 	}
@@ -537,6 +508,8 @@ public class HeatwaveDatabase {
 			null, null, null);
 		ArrayList<Contact> contacts = new ArrayList<Contact>();
 
+		if (cursor == null) return contacts;
+		
 		// Load all of the contacts.
 		cursor.moveToFirst();
 		while (!cursor.isAfterLast()) {
@@ -575,6 +548,8 @@ public class HeatwaveDatabase {
 			null,
 			null);
 
+		if (adrCursor == null) return new ArrayList<Contact>();
+		
 		adrCursor.moveToFirst();
 		while (!adrCursor.isAfterLast()) {
 			long adrId = adrCursor.getLong(0);
@@ -612,12 +587,12 @@ public class HeatwaveDatabase {
 	//// Wave-related methods //////
 	////////////////////////////////
 
-	public boolean addWave(Wave newWave) {
+	public long addWave(Wave newWave) {
 		return database.insert(HeatwaveOpenHelper.WAVE_TABLE_NAME, null,
-				newWave.cv()) != -1;
+			newWave.cv());
 	}
 	
-	public Wave fetchWave(int waveId) {
+	public Wave fetchWave(long waveId) {
 		SQLiteQueryBuilder qBuilder = new SQLiteQueryBuilder();
 		qBuilder.setTables(HeatwaveOpenHelper.WAVE_TABLE_NAME);
 
@@ -626,36 +601,35 @@ public class HeatwaveDatabase {
 		Cursor cursor = qBuilder.query(database, projection,
 				"_id = " + waveId, null, null, null, null);
 
-		cursor.moveToFirst();
-		if (!cursor.isAfterLast()) {
-			Wave w = Wave.skeleton();
-			Wave.Fields wf = w.new Fields();
+		Wave wave = null;
+		if (cursor != null && cursor.moveToFirst()) {
+			wave = Wave.skeleton();
+			Wave.Fields wf = wave.new Fields();
 			
 			wf.setId(cursor.getInt(0));
 			wf.setName(cursor.getString(1));
 			wf.setWavelength(cursor.getInt(2));
 			
-			w.modify(wf, false);
-			
-			return w;
-		} else
-			return null;
+			wave.modify(wf, false);
+		}
+		cursor.close();
+		return wave;
 	}
 
 	public void removeWave(Wave target) {
 		// Delete the wave.
-		boolean wave = (database.delete(HeatwaveOpenHelper.WAVE_TABLE_NAME,
+		database.delete(HeatwaveOpenHelper.WAVE_TABLE_NAME,
 			"_id = ?",
-			new String[] { String.valueOf(target.getId()) })) > 0;
+			new String[] { String.valueOf(target.getId()) });
 				
 		ContentValues cv = new ContentValues();
 		cv.put("wave", (Integer)null);
 		
 		// Clear the foreign key pointing to the wave on all relevant contacts.
-		boolean contacts = (database.update(HeatwaveOpenHelper.CONTACTS_TABLE_NAME,
+		database.update(HeatwaveOpenHelper.CONTACTS_TABLE_NAME,
 			cv,
 			"wave = ?",
-			new String[] { String.valueOf(target.getId()) })) > 0;
+			new String[] { String.valueOf(target.getId()) });
 	}
 	
 	public void updateWave(Wave w) {
@@ -680,12 +654,14 @@ public class HeatwaveDatabase {
 		
 		// TODO: Replace with Cursor.getCount() ?
 		int count = 0;
-		c.moveToFirst();
-		while (!c.isAfterLast()) {
-			count += 1;
-			c.moveToNext();
+		if (c != null) {		
+			c.moveToFirst();
+			while (!c.isAfterLast()) {
+				count += 1;
+				c.moveToNext();
+			}
+			c.close();
 		}
-		c.close();
 		
 		return count;
 	}
@@ -707,10 +683,8 @@ public class HeatwaveDatabase {
 				new String[] { String.valueOf(name) }, 
 				null, null, null);
 		
-		c.moveToFirst();
-		
-		if (c.isAfterLast()) return null;
-		else return fetchWave(c.getInt(0));
+		if (c != null && c.moveToFirst()) return fetchWave(c.getInt(0));
+		else return null;
 	}
 
 	/**
@@ -730,7 +704,8 @@ public class HeatwaveDatabase {
 				null, null);
 
 		ArrayList<Wave> waves = new ArrayList<Wave>();
-
+		if (cursor == null) return waves;
+		
 		cursor.moveToFirst();
 		while (!cursor.isAfterLast()) {
 			Wave w = Wave.skeleton();
@@ -745,6 +720,7 @@ public class HeatwaveDatabase {
 			waves.add(w);
 			cursor.moveToNext();
 		}
+		cursor.close();
 		return waves;
 	}
 	
@@ -768,8 +744,8 @@ public class HeatwaveDatabase {
 			Phone.CONTACT_ID + " = ? AND " + Data.MIMETYPE + " = ?", 
 			new String[] { String.valueOf(fields.getAdrId()), Phone.CONTENT_ITEM_TYPE }, 
 			null);
-		
-		if (cur.getCount() == 0) {
+		if (cur == null || cur.getCount() == 0) {
+			if (cur != null) cur.close();
 			// TODO: Add ContactInfoNotFound exception.
 			throw new Exception("No phone number available for Android ID #" + fields.getAdrId());
 		}
@@ -781,6 +757,7 @@ public class HeatwaveDatabase {
 				if (cur.getInt(1) == 1 || phoneNum == null) phoneNum = cur.getString(0);
 				cur.moveToNext();
 			}
+			cur.close();
 			return phoneNum;
 		}
 	}
@@ -801,6 +778,8 @@ public class HeatwaveDatabase {
 				"timestamp"
 			}, null, null, null, null, "timestamp DESC"
 		);
+		
+		if (c == null) return snooze;
 		
 		c.moveToFirst();
 		while (!c.isAfterLast()) {

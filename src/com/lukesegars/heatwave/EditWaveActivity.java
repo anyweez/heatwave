@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.InputType;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -25,11 +26,11 @@ public class EditWaveActivity extends Activity {
 		wave_length_field.setRawInputType(InputType.TYPE_CLASS_NUMBER);
 		
 		setButtonListeners();
-		Bundle extras = getIntent().getExtras();
 		
 		// If a wave was specified, attach a listener to the delete button.
-		if ( extras != null && extras.containsKey("waveId") ) {
-			preloadWave(extras.getInt("waveId"));
+		if (isEditingWave()) {
+			Bundle extras = getIntent().getExtras();
+			preloadWave(extras.getLong("waveId"));
 
 			Button btn = (Button)findViewById(R.id.delete_wave_btn);
 			btn.setOnClickListener(new View.OnClickListener() {
@@ -51,19 +52,22 @@ public class EditWaveActivity extends Activity {
 			btn_lbl.setVisibility(TextView.INVISIBLE);
 		}
 	}
-	
-	private void preloadWave(int waveId) {
-		database = HeatwaveDatabase.getInstance(getApplicationContext());
 
-		Wave w = database.fetchWave(waveId);
-		target = w;
+	private boolean isEditingWave() {
+		Bundle extras = getIntent().getExtras();
+		return extras != null && extras.containsKey("waveId");
+	}
+	
+	private void preloadWave(long waveId) {
+		database = HeatwaveDatabase.getInstance(getApplicationContext());
+		target = database.fetchWave(waveId);
 		
 		// Update the UI.
 		EditText wave_name = (EditText) findViewById(R.id.wave_name);
-		wave_name.setText(w.getName());
+		wave_name.setText(target.getName());
 		
 		EditText wave_length = (EditText) findViewById(R.id.wave_length);
-		wave_length.setText(String.valueOf(w.getWaveLength() / Wave.SECONDS_PER_UNIT));
+		wave_length.setText(String.valueOf(target.getWaveLength() / Wave.SECONDS_PER_UNIT));
 	}
 	
 	private void setButtonListeners() {
@@ -76,18 +80,23 @@ public class EditWaveActivity extends Activity {
 		
 		findViewById(R.id.save_btn).setOnClickListener(new View.OnClickListener() {
 			public void onClick(View v) {
-//				HeatwaveDatabase db = HeatwaveDatabase.getInstance(v.getContext());
-				
 				EditText name_field = (EditText)v.getRootView().findViewById(R.id.wave_name);
 				EditText wl_field = (EditText)v.getRootView().findViewById(R.id.wave_length);
 				
 				// If we're creating a wave (not editing a pre-existing one).
-				if (target == null) {
+				if (!isEditingWave()) {
 					// Save the new wave to the database 
 					int waveDays = Integer.parseInt(wl_field.getText().toString());
 
 					// Create the wave.
-					Wave.create(name_field.getText().toString(), waveDays * Wave.SECONDS_PER_UNIT);
+					Wave newWave = Wave.create(name_field.getText().toString(), 
+						waveDays * Wave.SECONDS_PER_UNIT);
+					
+					// Pass the user along to the wave member selector.
+					Intent intent = new Intent(getApplicationContext(), WaveMemberActivity.class);
+					intent.setFlags(Intent.FLAG_ACTIVITY_PREVIOUS_IS_TOP);
+					intent.putExtra("waveId", newWave.getId());
+					startActivity(intent);
 				}
 				// If we're editing a pre-existing one.
 				else {

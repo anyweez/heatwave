@@ -11,12 +11,14 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
+import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import net.hockeyapp.android.CrashManager;
 import net.hockeyapp.android.UpdateManager;
@@ -99,6 +101,9 @@ public class FriendListActivity extends ListActivity {
     	ContactArrayAdapter adapter = (ContactArrayAdapter)getListAdapter();
     	contextTarget = adapter.getItem(info.position);
     	
+    	// Hide the "add to wave" menu item if there are no waves.
+    	if (Wave.loadAll().size() == 0) cm.getItem(1).setEnabled(false);
+    	
     	// Set the title to be the user's name.
     	cm.setHeaderTitle(contextTarget.getName());
     }
@@ -149,6 +154,14 @@ public class FriendListActivity extends ListActivity {
     			ContactArrayAdapter adapter = (ContactArrayAdapter)getListAdapter();
     			adapter.sort(listSorter);
     			adapter.notifyDataSetChanged();
+    			
+    			// Display a message to the user to let them know that the contact has been
+    			// snoozed successfully.
+    			Toast msg = Toast.makeText(getApplicationContext(), 
+    				"Snoozed " + contextTarget.getName(), 
+    				Toast.LENGTH_SHORT);
+    			msg.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 0);
+    			msg.show();
     			contextTarget = null;
     			break;
     	}

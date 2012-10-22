@@ -21,7 +21,6 @@ public class DisplayWaveActivity extends ListActivity {
 	protected void onCreate(Bundle saved) {
 		super.onCreate(saved);
 		setContentView(R.layout.activity_display_waves);
-//		registerForContextMenu(getListView());
 
 		database = HeatwaveDatabase.getInstance(this);
 		
@@ -75,41 +74,11 @@ public class DisplayWaveActivity extends ListActivity {
     	switch (item.getItemId()) {
     		case R.id.menu_new_wave:
     			Intent i = new Intent(this, EditWaveActivity.class);
+				i.setFlags(Intent.FLAG_ACTIVITY_PREVIOUS_IS_TOP);
     			startActivity(i);
     			return true;
     		default:
     			return super.onOptionsItemSelected(item);
     	}
 	}
-	
-//	@Override
-//	public void onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo) {
-//		super.onCreateContextMenu(menu, v, menuInfo);
-//		
-//		menu.setHeaderTitle("Modify wave");
-//		menu.add(0, MENU_WAVE_EDIT, 0, "Edit wave");
-//		menu.add(0, MENU_WAVE_DELETE, 0, "Delete wave");
-//	}
-	
-//	@Override
-//	public boolean onContextItemSelected(MenuItem item) {
-//		AdapterView.AdapterContextMenuInfo info = 
-//			(AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
-//
-//		int id = (int)waveAdapter.getItemId(info.position);
-//		Wave w = waveAdapter.getItem(id);
-//
-//		if (item.getItemId() == MENU_WAVE_EDIT) {
-//			Intent i = new Intent(this, EditWaveActivity.class);
-//			i.putExtra("waveId", w.getId());
-//			startActivity(i);
-//		}
-//		else if (item.getItemId() == MENU_WAVE_DELETE) {
-//			database.removeWave(w);
-//			waveAdapter.remove(w);
-//		}
-//		waveAdapter.notifyDataSetChanged();
-//
-//		return false;
-//	}
 }
