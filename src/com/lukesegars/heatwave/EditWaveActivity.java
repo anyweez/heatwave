@@ -93,8 +93,8 @@ public class EditWaveActivity extends Activity {
 					
 					// Pass the user along to the wave member selector.
 					Intent intent = new Intent(getApplicationContext(), WaveMemberActivity.class);
-					intent.setFlags(Intent.FLAG_ACTIVITY_PREVIOUS_IS_TOP);
 					intent.putExtra("waveId", newWave.getId());
+					
 					startActivity(intent);
 				}
 				// If we're editing a pre-existing one.

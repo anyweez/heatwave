@@ -567,7 +567,6 @@ public class HeatwaveDatabase {
 			if (!contacts.get(i).hasName()) {
 				// Remove the contact from the database if they do not exist anymore.
 				Contact.delete(contacts.get(i).getAdrId());
-				
 				contacts.remove(i);
 			}
 		}
