@@ -36,8 +36,9 @@ public class EditWaveActivity extends Activity {
 				public void onClick(View v) {
 					database.removeWave(target);
 					
-					Intent intent = new Intent(getApplicationContext(), DisplayWaveActivity.class);
-					startActivity(intent);
+					finish();
+//					Intent intent = new Intent(getApplicationContext(), DisplayWaveActivity.class);
+//					startActivity(intent);
 				}
 			});
 		}
