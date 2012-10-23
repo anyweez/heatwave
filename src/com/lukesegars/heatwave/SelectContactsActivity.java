@@ -4,7 +4,6 @@ import java.util.ArrayList;
 
 import android.app.ListActivity;
 import android.app.SearchManager;
-import android.app.DownloadManager.Query;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
@@ -79,7 +78,7 @@ public class SelectContactsActivity extends ListActivity {
 		contactNames.clear();
 		
 		String searchQuery = null;
-		if (intent.ACTION_SEARCH.equals(intent.getAction())) {
+		if (Intent.ACTION_SEARCH.equals(intent.getAction())) {
 			searchQuery = intent.getStringExtra(SearchManager.QUERY);
 		}
 		
@@ -115,7 +114,7 @@ public class SelectContactsActivity extends ListActivity {
 			contactNames);
 		lv.setAdapter(adapter);
 		
-		ArrayList<Integer> actives = database.getActiveContactAdrIds();
+		ArrayList<Long> actives = database.getActiveContactAdrIds();
 		
 		// TODO: Optimize this.
 		// For each active ID, check to see if the contact ID

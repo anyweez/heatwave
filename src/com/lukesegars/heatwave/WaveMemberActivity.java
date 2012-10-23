@@ -7,7 +7,6 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.ContactsContract;
-import android.util.Log;
 import android.util.SparseBooleanArray;
 import android.view.View;
 import android.widget.ArrayAdapter;
@@ -121,7 +120,6 @@ public class WaveMemberActivity extends ListActivity {
 			Contact c = Contact.loadByAdrId(cid);
 			Contact.Fields cf = c.new Fields();
 
-			Log.i(TAG, "Adding " + c.getName() + " to wave " + wave.getName());
 			cf.setWave(wave);
 			c.modify(cf);
 		}
@@ -131,7 +129,6 @@ public class WaveMemberActivity extends ListActivity {
 			Contact c = Contact.loadByAdrId(cid);
 			Contact.Fields cf = c.new Fields();
 
-			Log.i(TAG, "Adding " + c.getName() + " to wave.");
 			cf.setWave(null);
 			c.modify(cf);
 		}

@@ -173,7 +173,7 @@ public class HeatwaveDatabase {
 		}
 	}
 	
-	public boolean contactExists(int adrId) {
+	public boolean contactExists(long adrId) {
 		Cursor c = database.query(HeatwaveOpenHelper.CONTACTS_TABLE_NAME, 
 			new String[] { "_id" }, 
 			"uid = ?", 
@@ -209,22 +209,15 @@ public class HeatwaveDatabase {
 	 * 
 	 * @return
 	 */
-	public ArrayList<Integer> getActiveContactAdrIds() {
-		String[] projection = new String[] { "uid" };
+	public ArrayList<Long> getActiveContactAdrIds() {
+		ArrayList<Contact> contacts = fetchContacts();
+		ArrayList<Long> ids = new ArrayList<Long>();
 
-		Cursor c = database.query(HeatwaveOpenHelper.CONTACTS_TABLE_NAME,
-				projection, null, null, null, null, null);
-
-		ArrayList<Integer> activeContacts = new ArrayList<Integer>();
-		c.moveToFirst();
-
-		while (!c.isAfterLast()) {
-			activeContacts.add(c.getInt(0));
-			c.moveToNext();
+		for (Contact c : contacts) {
+			ids.add(c.getAdrId());
 		}
-		c.close();
 
-		return activeContacts;		
+		return ids;		
 	}
 
 	/**
@@ -263,8 +256,8 @@ public class HeatwaveDatabase {
 	 * TODO: Add ContactNotFoundException's where appropriate.
 	 * TODO: Merge fetchContact and fetchContacts to share a lot of this code.
 	 * 
-	 * @param adrId The ID of the 
-	 * @return
+	 * @param adrId The ID of the contact to retrieve.
+	 * @return Contact object or null.
 	 */
 	public Contact fetchContact(long adrId) {
 		// Get the list of contacts from the Heatwave database.
@@ -464,7 +457,7 @@ public class HeatwaveDatabase {
 	 * @param fields
 	 * @return
 	 */
-	public ArrayList<Long> getRawContacts(Contact.Fields fields) {
+	private ArrayList<Long> getRawContacts(Contact.Fields fields) {
 		Cursor c = context.getContentResolver().query(RawContacts.CONTENT_URI, 
 			new String[] { RawContacts._ID }, 
 			RawContacts.CONTACT_ID + " = ?", 
@@ -793,12 +786,18 @@ public class HeatwaveDatabase {
 		return snooze;
 	}
 	
-	public void addSnoozeRecord(Contact c, long timestamp) {
+	public long addSnoozeRecord(Contact c, long timestamp) {
 		ContentValues cv = new ContentValues();
 		cv.put("uid", c.getAdrId());
 		cv.put("timestamp", timestamp);
 		cv.put("percentage", 100);
 		
-		database.insert(HeatwaveOpenHelper.SNOOZE_TABLE_NAME, null, cv);
+		return database.insert(HeatwaveOpenHelper.SNOOZE_TABLE_NAME, null, cv);
+	}
+	
+	public void removeSnoozeRecord(long rid) {
+		database.delete(HeatwaveOpenHelper.SNOOZE_TABLE_NAME, 
+			"_id = ?", 
+			new String[] { String.valueOf(rid) });
 	}
 }

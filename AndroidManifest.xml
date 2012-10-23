@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.lukesegars.heatwave"
-    android:versionCode="12"
+    android:versionCode="14"
     android:versionName="1.3.6" >
 
     <uses-sdk
@@ -17,6 +17,11 @@
 	<uses-permission android:name="android.permission.INTERNET" />
 	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 	<!-- end Hockey.app permissions -->
+	
+	<!-- Testing instrumentation -->
+    <instrumentation android:name="android.test.InstrumentationTestRunner"
+        android:targetPackage="com.lukesegars.heatwave"
+        android:label="Heatwave Test Suite" />
 		
     <application
         android:icon="@drawable/ic_launcher"
@@ -55,10 +60,11 @@
         <activity
             android:name=".WaveMemberActivity"
             android:label="Select wave members" />
+       
+        <uses-library android:name="android.test.runner" />
         
         <!-- Hockey.app stuff -->
         <activity android:name="net.hockeyapp.android.UpdateActivity" />
-		
     </application>
 
 </manifest>
