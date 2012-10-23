@@ -336,7 +336,7 @@ public class HeatwaveDatabase {
 	public long updateTimestamp(Contact.Fields fields) {
 		// Get all of the phone numbers for the contact.
 		StringBuilder contactQuery = new StringBuilder();
-		ArrayList<Long> rawIds = getRawContacts(fields);
+		ArrayList<Long> rawIds = getRawContactIds(fields);
 		String[] rawStr = new String[rawIds.size()];
 		
 		// Construct a query string containing all of the Contact's raw ID's.
@@ -457,7 +457,7 @@ public class HeatwaveDatabase {
 	 * @param fields
 	 * @return
 	 */
-	private ArrayList<Long> getRawContacts(Contact.Fields fields) {
+	private ArrayList<Long> getRawContactIds(Contact.Fields fields) {
 		Cursor c = context.getContentResolver().query(RawContacts.CONTENT_URI, 
 			new String[] { RawContacts._ID }, 
 			RawContacts.CONTACT_ID + " = ?", 

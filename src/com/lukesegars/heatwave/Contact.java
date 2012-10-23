@@ -126,7 +126,7 @@ public class Contact {
 	 * @param w
 	 * @return
 	 */
-	public static Contact create(int adrId, Wave w) {
+	public static Contact create(long adrId, Wave w) {
 		initDb();
 		
 		if (database.contactExists(adrId)) {

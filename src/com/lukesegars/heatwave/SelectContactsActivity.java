@@ -25,7 +25,7 @@ public class SelectContactsActivity extends ListActivity {
 	private HeatwaveDatabase database;
 
 	private ArrayList<String> contactNames = new ArrayList<String>();
-	private ArrayList<Integer> contactIds = new ArrayList<Integer>();
+	private ArrayList<Long> contactIds = new ArrayList<Long>();
 	
 	@Override
 	protected void onCreate(Bundle saved) {
@@ -41,8 +41,8 @@ public class SelectContactsActivity extends ListActivity {
 			public void onClick(View v) {
 				SparseBooleanArray arr = getListView().getCheckedItemPositions();
 				
-				ArrayList<Integer> actives = new ArrayList<Integer>();
-				ArrayList<Integer> inactives = new ArrayList<Integer>();
+				ArrayList<Long> actives = new ArrayList<Long>();
+				ArrayList<Long> inactives = new ArrayList<Long>();
 
 				for (int i = 0; i < arr.size(); i++) {
 					int itemId = arr.keyAt(i);
@@ -101,7 +101,7 @@ public class SelectContactsActivity extends ListActivity {
 		
 		cursor.moveToFirst();
 		while (!cursor.isAfterLast()) {
-			contactIds.add(cursor.getInt(0));
+			contactIds.add(cursor.getLong(0));
 			contactNames.add(cursor.getString(1));
 			
 			cursor.moveToNext();
@@ -115,9 +115,10 @@ public class SelectContactsActivity extends ListActivity {
 		lv.setAdapter(adapter);
 		
 		ArrayList<Long> actives = database.getActiveContactAdrIds();
+		Log.i(TAG, "ACTIVES: " + actives.size());
 		
 		// TODO: Optimize this.
-		// For each active ID, check to see if the contact ID
+		// For each active ID, check to see if the contact ID exists in the DB.
 		for (int i = 0; i < contactIds.size(); i++) {
 			if (actives.contains(contactIds.get(i))) lv.setItemChecked(i, true);
 		}
@@ -125,13 +126,13 @@ public class SelectContactsActivity extends ListActivity {
 		adapter.notifyDataSetChanged();
 	}
 
-	private void updateContacts(ArrayList<Integer> actives, ArrayList<Integer> inactives) {
+	private void updateContacts(ArrayList<Long> actives, ArrayList<Long> inactives) {
 		// 1. Create a new Contact for each ID.  create() will not create
 		//    a record if one already exists for the user with this ID.
-		for (Integer id : actives) Contact.create(id, null);
+		for (Long id : actives) Contact.create(id, null);
 		
 		// 2. Delete all of the Contacts that are no longer on the list.
-		for (Integer id : inactives) Contact.delete(id);
+		for (Long id : inactives) Contact.delete(id);
 	}
 	
     @Override
@@ -144,9 +145,6 @@ public class SelectContactsActivity extends ListActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
     	switch (item.getItemId()) {
     		case R.id.menu_search_contacts:
-//    			startActivity(
-//    				new Intent(this, SelectContactsActivity.class)
-//    			);
     			onSearchRequested();
     			return true;
     		default:
