@@ -1,5 +1,7 @@
 package com.lukesegars.heatwave;
 
+import com.lukesegars.heatwave.caches.ContactDataCache;
+
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
@@ -35,10 +37,10 @@ public class EditWaveActivity extends Activity {
 			btn.setOnClickListener(new View.OnClickListener() {
 				public void onClick(View v) {
 					database.removeWave(target);
-					
+					// TODO: Can we do a partial invalidation here?  Not sure
+					// how easy or fast that would be...
+					ContactDataCache.getInstance().invalidateAll();
 					finish();
-//					Intent intent = new Intent(getApplicationContext(), DisplayWaveActivity.class);
-//					startActivity(intent);
 				}
 			});
 		}

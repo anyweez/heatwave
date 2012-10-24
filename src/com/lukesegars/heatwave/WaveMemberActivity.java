@@ -2,6 +2,8 @@ package com.lukesegars.heatwave;
 
 import java.util.ArrayList;
 
+import com.lukesegars.heatwave.caches.ContactDataCache;
+
 import android.app.ListActivity;
 import android.database.Cursor;
 import android.net.Uri;
@@ -19,8 +21,8 @@ public class WaveMemberActivity extends ListActivity {
 	
 	private HeatwaveDatabase database;
 
-	private ArrayList<String> contactNames;
-	private ArrayList<Integer> contactIds;
+//	private ArrayList<String> contactNames;
+	private ArrayList<Long> contactIds;
 	
 	private Wave wave;
 	
@@ -35,8 +37,8 @@ public class WaveMemberActivity extends ListActivity {
 			public void onClick(View v) {
 				SparseBooleanArray arr = getListView().getCheckedItemPositions();
 				
-				ArrayList<Integer> actives = new ArrayList<Integer>();
-				ArrayList<Integer> inactives = new ArrayList<Integer>();
+				ArrayList<Long> actives = new ArrayList<Long>();
+				ArrayList<Long> inactives = new ArrayList<Long>();
 				
 				for (int i = 0; i < arr.size(); i++) {
 					int itemId = arr.keyAt(i);
@@ -60,9 +62,6 @@ public class WaveMemberActivity extends ListActivity {
 		database = HeatwaveDatabase.getInstance(this);
 		wave = database.fetchWave(waveId);
 		
-		contactNames = new ArrayList<String>();
-		contactIds = new ArrayList<Integer>();
-				
 		loadAdrContacts();
 	}
 	
@@ -71,17 +70,14 @@ public class WaveMemberActivity extends ListActivity {
 	 * possible to roll it into one of the pre-existing functions.
 	 */
 	private void loadAdrContacts() {
-		Uri uri = ContactsContract.Contacts.CONTENT_URI;
-		String[] projection = new String[] {
-			ContactsContract.Contacts._ID,
-			ContactsContract.Contacts.DISPLAY_NAME
-		};
-
-		Cursor cursor = getContentResolver().query(uri, 
-			projection, 
-			ContactsContract.Contacts.HAS_PHONE_NUMBER + " = 1", 
-			null, 
-			ContactsContract.Contacts.DISPLAY_NAME + " ASC");
+		ArrayList<String> contactNames = new ArrayList<String>();
+		contactIds = new ArrayList<Long>();
+		
+		ArrayList<Contact> contacts = database.fetchContacts();
+		for (Contact c : contacts) {
+			contactNames.add(c.getName());
+			contactIds.add(c.getAdrId());
+		}
 		
 		ListView lv = getListView();
 		// Configure the adapter for the ListView.
@@ -90,47 +86,43 @@ public class WaveMemberActivity extends ListActivity {
 				contactNames);
 		lv.setAdapter(adapter);
 		
-		cursor.moveToFirst();
-		while (!cursor.isAfterLast()) {
-			int cNum = contactIds.size();
-			int adrId = cursor.getInt(0);
-
-			// Fetch the wave information for the current contact.
-			Contact c = Contact.loadByAdrId(adrId);
-			if (c != null) {
-				Wave w = c.getWave();
-
-				contactIds.add(adrId);
-				contactNames.add(cursor.getString(1));
-			
-				if (w != null && w.getId() == wave.getId()) { 
-					lv.setItemChecked(cNum, true);
-				}
-			}
-			cursor.moveToNext();
+		for (int i = 0; i < contacts.size(); i++) {
+			Contact c = contacts.get(i);
+			if (c.getWave() != null && c.getWave().getId() == wave.getId()) { 
+				lv.setItemChecked(i, true);
+			}			
 		}
-		cursor.close();
+		
 		adapter.notifyDataSetChanged();
 	}
 	
-	public void updateWaveMembers(ArrayList<Integer> actives, ArrayList<Integer> inactives) {
+	public void updateWaveMembers(ArrayList<Long> actives, ArrayList<Long> inactives) {
+		ContactDataCache ctxCache = ContactDataCache.getInstance();
+//		ctxCache.invalidateAll();
+		
 		// For each user, update their contact record to indicate that
 		// they are in the current wave.
-		for (Integer cid : actives) {
+		for (Long cid : actives) {
 			Contact c = Contact.loadByAdrId(cid);
 			Contact.Fields cf = c.new Fields();
 
 			cf.setWave(wave);
 			c.modify(cf);
+			
+			ctxCache.invalidateEntry(c.getAdrId());
+			ctxCache.addEntry(c.getAdrId(), c);
 		}
 
 		// Update the records of individuals who are no longer in the wave.
-		for (Integer cid : inactives) {
+		for (Long cid : inactives) {
 			Contact c = Contact.loadByAdrId(cid);
 			Contact.Fields cf = c.new Fields();
 
 			cf.setWave(null);
 			c.modify(cf);
+
+			ctxCache.invalidateEntry(c.getAdrId());
+			ctxCache.addEntry(c.getAdrId(), c);
 		}
 	}
 	

@@ -5,6 +5,10 @@ import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.lukesegars.heatwave.caches.ContactDataCache;
+import com.lukesegars.heatwave.caches.DataCache;
+import com.lukesegars.heatwave.caches.QueryDataCache;
+
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
@@ -30,7 +34,7 @@ public class HeatwaveDatabase {
 	private HeatwaveOpenHelper dbHelper;
 	private SQLiteDatabase database;
 	private Context context;
-
+	
 	private static HeatwaveDatabase instance;
 
 	/**
@@ -39,7 +43,7 @@ public class HeatwaveDatabase {
 	 * class.
 	 */
 	private static class HeatwaveOpenHelper extends SQLiteOpenHelper {
-		private static final int DATABASE_VERSION = 4;
+		private static final int DATABASE_VERSION = 5;
 		private static final String DATABASE_NAME = "heatwave";
 		private static final String WAVE_TABLE_NAME = "waves";
 		private static final String CONTACTS_TABLE_NAME = "contacts";
@@ -61,6 +65,8 @@ public class HeatwaveDatabase {
 									// only be in one wave at a time.
 				"lastCallId INTEGER)";	// the CallLog ID of the last call that was
 
+		private static final String CONTACTS_INDEX_CREATE = "CREATE INDEX IF NOT EXISTS " + 
+				" contacts_idx ON contacts(uid, lastCallId)";
 		private static final String SNOOZE_TABLE_CREATE = "CREATE TABLE IF NOT EXISTS " +
 				SNOOZE_TABLE_NAME +
 				" (_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
@@ -79,6 +85,7 @@ public class HeatwaveDatabase {
 		public void onCreate(SQLiteDatabase db) {
 			db.execSQL(WAVE_TABLE_CREATE);
 			db.execSQL(CONTACTS_TABLE_CREATE);
+			db.execSQL(CONTACTS_INDEX_CREATE);
 			db.execSQL(SNOOZE_TABLE_CREATE);
 		}
 
@@ -93,7 +100,8 @@ public class HeatwaveDatabase {
 		public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
 //			db.execSQL("DROP TABLE IF EXISTS " + WAVE_TABLE_NAME);
 //			db.execSQL("DROP TABLE IF EXISTS " + CONTACTS_TABLE_NAME);
-			db.execSQL("DROP TABLE IF EXISTS " + SNOOZE_TABLE_NAME);
+//			db.execSQL("DROP TABLE IF EXISTS " + SNOOZE_TABLE_NAME);
+			db.execSQL(CONTACTS_INDEX_CREATE);
 
 			onCreate(db);
 		}
@@ -101,6 +109,7 @@ public class HeatwaveDatabase {
 
 	private HeatwaveDatabase(Context c) {
 		context = c;
+		
 	}
 
 	/**
@@ -260,6 +269,10 @@ public class HeatwaveDatabase {
 	 * @return Contact object or null.
 	 */
 	public Contact fetchContact(long adrId) {
+		ContactDataCache ctxCache = ContactDataCache.getInstance();
+		// Check the cache.
+		if (ctxCache.entryExists(adrId)) return ctxCache.getEntry(adrId);
+		
 		// Get the list of contacts from the Heatwave database.
 		SQLiteQueryBuilder qBuilder = new SQLiteQueryBuilder();
 		qBuilder.setTables(HeatwaveOpenHelper.CONTACTS_TABLE_NAME);
@@ -317,23 +330,28 @@ public class HeatwaveDatabase {
 		
 		// Clean up.
 		adrCursor.close();
+		ctxCache.addEntry(adrId, c);
 		
 		return c;
 	}
 	
 	/**
-	 * Scans the system's call log to find the most recent call that's
-	 * been made to or from the provided contact.  The call must have
-	 * lasted at least @link HeatwaveDatabase.DURATION_THRESHOLD seconds
-	 * in order to count as a valid call.
+	 * This is an internal method used for building the SQL query for scanning
+	 * the call logs.  It is pretty slow and generally static after being 
+	 * computed once (unless the user adds or removes phone numbers for a 
+	 * paricular contact), so it uses the DataCache to store the value for
+	 * subsequent reloads.
 	 * 
-	 * TODO: Add ContactNotFoundException's where appropriate.
-	 * TODO: Currently not using the last call time that's cached in the database.  Use it or drop it.
-	 * 
-	 * @param adrId
+	 * @param fields
 	 * @return
 	 */
-	public long updateTimestamp(Contact.Fields fields) {
+	private String getQueryPhoneNum(Contact.Fields fields) {
+		// Check the cache first.
+		QueryDataCache qdCache = QueryDataCache.getInstance();
+		if (qdCache.entryExists(fields.getAdrId())) {
+			return qdCache.getEntry(fields.getAdrId());
+		}
+		
 		// Get all of the phone numbers for the contact.
 		StringBuilder contactQuery = new StringBuilder();
 		ArrayList<Long> rawIds = getRawContactIds(fields);
@@ -365,7 +383,7 @@ public class HeatwaveDatabase {
 		// SelectContactsActivity.loadAdrContacts().
 		// If no phone numbers exist then return zero (it is impossible that
 		// they are a contact that we've contacted on this device).
-		if (c == null || !c.moveToFirst()) return 0;
+		if (c == null || !c.moveToFirst()) return null;
 		
 		// Build a query string with all of the phone numbers.
 		StringBuilder phoneNumQry = new StringBuilder();
@@ -410,6 +428,28 @@ public class HeatwaveDatabase {
 			else phoneNumQry.append(")");
 		}
 		
+		// Store this so we don't have to recompute it.
+//		cache.addEntry(DataCache.PHONE_NUM_QUERY, fields.getAdrId(), phoneNumQry.toString());
+		qdCache.addEntry(fields.getAdrId(), phoneNumQry.toString());
+		return phoneNumQry.toString();
+	}
+	
+	/**
+	 * Scans the system's call log to find the most recent call that's
+	 * been made to or from the provided contact.  The call must have
+	 * lasted at least @link HeatwaveDatabase.DURATION_THRESHOLD seconds
+	 * in order to count as a valid call.
+	 * 
+	 * TODO: Add ContactNotFoundException's where appropriate.
+	 * TODO: Currently not using the last call time that's cached in the database.  Use it or drop it.
+	 * 
+	 * @param adrId
+	 * @return
+	 */
+	public long updateTimestamp(Contact.Fields fields) {
+		long start = System.currentTimeMillis();
+		String phoneNumQry = getQueryPhoneNum(fields);
+		
 		// Scan through the call log for recent calls.
 		Cursor callCursor = context.getContentResolver().query(
 			android.provider.CallLog.Calls.CONTENT_URI, 
@@ -417,7 +457,7 @@ public class HeatwaveDatabase {
 				"_id",
 				CallLog.Calls.DATE
 			}, 
-			phoneNumQry.toString(), 
+			phoneNumQry, 
 			new String[] {
 				String.valueOf(fields.getLastCallId())
 			},
@@ -441,8 +481,9 @@ public class HeatwaveDatabase {
 				"uid = ?", 
 				new String[] { String.valueOf(fields.getAdrId()) });
 		}
-		
 		callCursor.close();
+		
+		Log.i(TAG, "Updating timestamp took " + (System.currentTimeMillis() - start) / 1000.0 + " seconds.");
 		return lastCall;
 	}
 	
@@ -490,6 +531,14 @@ public class HeatwaveDatabase {
 	 */
 	public ArrayList<Contact> fetchContacts() {
 		long start = System.currentTimeMillis();
+		ContactDataCache ctxCache = ContactDataCache.getInstance();
+		
+		// Check the cache.  If any entries are there, assume they're legit.  Whenever
+		// the contact list changes the cache will be invalidated by that method.
+		if (ctxCache.numEntries() > 0) {
+			Log.i(TAG, "Found data in cache.");
+			return ctxCache.getAllEntries();
+		}
 		
 		// Get the list of contacts from the Heatwave database.
 		SQLiteQueryBuilder qBuilder = new SQLiteQueryBuilder();
@@ -568,6 +617,10 @@ public class HeatwaveDatabase {
 				// Remove the contact from the database if they do not exist anymore.
 				Contact.delete(contacts.get(i).getAdrId());
 				contacts.remove(i);
+			}
+			else {
+				// Add the contact to the cache.
+				ctxCache.addEntry(contacts.get(i).getAdrId(), contacts.get(i));
 			}
 		}
 

@@ -2,6 +2,8 @@ package com.lukesegars.heatwave;
 
 import java.util.ArrayList;
 
+import com.lukesegars.heatwave.caches.ContactDataCache;
+
 import android.app.ListActivity;
 import android.app.SearchManager;
 import android.content.Intent;
@@ -127,12 +129,21 @@ public class SelectContactsActivity extends ListActivity {
 	}
 
 	private void updateContacts(ArrayList<Long> actives, ArrayList<Long> inactives) {
+		// Invalidate the current contact cache because things are likely about to change.
+		ContactDataCache ctxCache = ContactDataCache.getInstance();
+		
 		// 1. Create a new Contact for each ID.  create() will not create
 		//    a record if one already exists for the user with this ID.
-		for (Long id : actives) Contact.create(id, null);
+		for (Long id : actives) {
+			Contact c = Contact.create(id, null);
+			ctxCache.addEntry(c.getAdrId(), c);
+		}
 		
 		// 2. Delete all of the Contacts that are no longer on the list.
-		for (Long id : inactives) Contact.delete(id);
+		for (Long id : inactives) {
+			Contact.delete(id);
+			ctxCache.invalidateEntry(id);
+		}
 	}
 	
     @Override

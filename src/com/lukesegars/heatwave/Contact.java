@@ -164,6 +164,7 @@ public class Contact {
 	 */
 	public static Contact skeleton() { return new Contact(); }
 	
+	// TODO: Add caching.
 	public static Contact loadByAdrId(long adrId) {
 		initDb();
 		
@@ -173,7 +174,6 @@ public class Contact {
 	
 	public static ArrayList<Contact> getAll() {
 		initDb();
-
 		return database.fetchContacts();
 	}
 	

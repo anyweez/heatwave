@@ -3,12 +3,15 @@ package com.lukesegars.heatwave;
 import java.util.ArrayList;
 import java.util.Comparator;
 
+import com.lukesegars.heatwave.caches.ContactDataCache;
+
 import android.net.Uri;
 import android.os.Bundle;
 import android.app.AlertDialog;
 import android.app.ListActivity;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.util.Log;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.view.Gravity;
@@ -42,7 +45,6 @@ public class FriendListActivity extends ListActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         storeObjectContext();
-        
         setContentView(R.layout.activity_friend_list);
 
         ArrayList<Contact> contacts = new ArrayList<Contact>();
@@ -50,7 +52,6 @@ public class FriendListActivity extends ListActivity {
         ContactArrayAdapter listAdapter = new ContactArrayAdapter(this,
         	R.layout.display_contact_row,
         	contacts);
-        
         
         setListAdapter(listAdapter);
         
@@ -119,7 +120,6 @@ public class FriendListActivity extends ListActivity {
     			AlertDialog.Builder dialog = new AlertDialog.Builder(this);
     			dialog.setTitle("Select wave");
     			dialog.setItems(names, new DialogInterface.OnClickListener() {
-					
 					public void onClick(DialogInterface dialog, int which) {
 						String name = names[which];
 						Wave selected = null;
@@ -133,7 +133,12 @@ public class FriendListActivity extends ListActivity {
 							Contact.Fields fields = contextTarget.new Fields();
 							fields.setWave(selected);
 							contextTarget.modify(fields);
-
+							
+							// Update the cache.
+							ContactDataCache ctxCache = ContactDataCache.getInstance();
+							ctxCache.invalidateEntry(fields.getAdrId());
+							ctxCache.addEntry(fields.getAdrId(), contextTarget);
+							
 							ContactArrayAdapter adapter = (ContactArrayAdapter)getListAdapter();
 					    	adapter.sort(listSorter);
 							// Notify the adapter that the data may have changed.
@@ -145,7 +150,6 @@ public class FriendListActivity extends ListActivity {
     			break;
     		case R.id.ctx_snooze_contact:
     			// TODO: Check for null contextTarget.  If so, log it and abort add.
-    			//        Maybe consider adding Toast alert?
     			// Store the snooze event.
     			SnoozeMaster sm = SnoozeMaster.getInstance(getApplicationContext());
     			sm.addSnooze(contextTarget, Math.round(System.currentTimeMillis() / 1000));
@@ -211,6 +215,8 @@ public class FriendListActivity extends ListActivity {
     
     // TODO: Better to clear all and then re-sort?  Faster to diff then +/-?
     public void updateContactList() {
+    	long start = System.currentTimeMillis();
+    	
     	ArrayList<Contact> contacts = Contact.getAll();
     	ContactArrayAdapter adapter = (ContactArrayAdapter) getListAdapter();
     	
@@ -226,6 +232,8 @@ public class FriendListActivity extends ListActivity {
     	
     	adapter.sort(listSorter);
     	adapter.notifyDataSetChanged();
+
+    	Log.i(TAG, "Updating contacts took " + (System.currentTimeMillis() - start) / 1000.0 + " seconds.");
     }
 
     @Override
