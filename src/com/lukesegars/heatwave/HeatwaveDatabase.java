@@ -43,7 +43,7 @@ public class HeatwaveDatabase {
 	 * class.
 	 */
 	private static class HeatwaveOpenHelper extends SQLiteOpenHelper {
-		private static final int DATABASE_VERSION = 5;
+		private static final int DATABASE_VERSION = 6;
 		private static final String DATABASE_NAME = "heatwave";
 		private static final String WAVE_TABLE_NAME = "waves";
 		private static final String CONTACTS_TABLE_NAME = "contacts";
@@ -66,7 +66,7 @@ public class HeatwaveDatabase {
 				"lastCallId INTEGER)";	// the CallLog ID of the last call that was
 
 		private static final String CONTACTS_INDEX_CREATE = "CREATE INDEX IF NOT EXISTS " + 
-				" contacts_idx ON contacts(uid, lastCallId)";
+				" contacts_idx ON contacts(uid)";
 		private static final String SNOOZE_TABLE_CREATE = "CREATE TABLE IF NOT EXISTS " +
 				SNOOZE_TABLE_NAME +
 				" (_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
@@ -101,6 +101,7 @@ public class HeatwaveDatabase {
 //			db.execSQL("DROP TABLE IF EXISTS " + WAVE_TABLE_NAME);
 //			db.execSQL("DROP TABLE IF EXISTS " + CONTACTS_TABLE_NAME);
 //			db.execSQL("DROP TABLE IF EXISTS " + SNOOZE_TABLE_NAME);
+			db.execSQL("DROP INDEX IF EXISTS contacts_idx");
 			db.execSQL(CONTACTS_INDEX_CREATE);
 
 			onCreate(db);
