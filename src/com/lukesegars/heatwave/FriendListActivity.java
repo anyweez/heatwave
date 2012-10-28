@@ -137,7 +137,6 @@ public class FriendListActivity extends ListActivity {
 							// Update the cache.
 							ContactDataCache ctxCache = ContactDataCache.getInstance();
 							ctxCache.invalidateEntry(fields.getAdrId());
-							ctxCache.addEntry(fields.getAdrId(), contextTarget);
 							
 							ContactArrayAdapter adapter = (ContactArrayAdapter)getListAdapter();
 					    	adapter.sort(listSorter);
@@ -200,6 +199,7 @@ public class FriendListActivity extends ListActivity {
     private void storeObjectContext() {
     	Wave.setContext(getApplicationContext());
     	Contact.setContext(getApplicationContext());
+    	HeatwaveDatabase.setContext(getApplicationContext());
     }
     
     @Override

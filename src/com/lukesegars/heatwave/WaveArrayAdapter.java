@@ -21,7 +21,7 @@ public class WaveArrayAdapter extends ArrayAdapter<Wave> {
 		super(context, textViewResourceId, waves);
 		resource = textViewResourceId;
 		
-		database = HeatwaveDatabase.getInstance(getContext());
+		database = HeatwaveDatabase.getInstance();
 	}
 
 	@Override

@@ -63,8 +63,7 @@ public class SelectContactsActivity extends ListActivity {
 			}
 		});
 		
-		database = HeatwaveDatabase.getInstance(this);
-		
+		database = HeatwaveDatabase.getInstance();
 		loadAdrContacts(getIntent());
 	}
 	

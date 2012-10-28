@@ -22,7 +22,7 @@ public class DisplayWaveActivity extends ListActivity {
 		super.onCreate(saved);
 		setContentView(R.layout.activity_display_waves);
 
-		database = HeatwaveDatabase.getInstance(this);
+		database = HeatwaveDatabase.getInstance();
 		
 		waves = new ArrayList<Wave>();
 		waveAdapter = new WaveArrayAdapter(this, R.layout.display_wave_row, waves);

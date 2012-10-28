@@ -16,7 +16,7 @@ public class SnoozeMaster {
 	 * Load the snooze log.
 	 */
 	private SnoozeMaster(Context c) {
-		database = HeatwaveDatabase.getInstance(c);
+		database = HeatwaveDatabase.getInstance();
 		refresh();
 	}
 	

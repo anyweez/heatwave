@@ -46,7 +46,7 @@ public class Wave {
 	
 	private static void initDb() {
 		if (database == null) {
-			database = HeatwaveDatabase.getInstance(context);
+			database = HeatwaveDatabase.getInstance();
 		}
 	}
 

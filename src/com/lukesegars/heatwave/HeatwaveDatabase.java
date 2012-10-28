@@ -28,12 +28,12 @@ import android.util.Log;
 // FIXME: If Contact is added to HW, then merged with another contact (changing ID's) then ID is not adjusted.
 public class HeatwaveDatabase {
 	private static final String TAG = "HeatwaveDatabase";
-	private static final int DURATION_THRESHOLD = 120;
+	private static final int DURATION_THRESHOLD = 5;
 
 	// SQLite database helper (local class)
 	private HeatwaveOpenHelper dbHelper;
 	private SQLiteDatabase database;
-	private Context context;
+	private static Context context = null;
 	
 	private static HeatwaveDatabase instance;
 
@@ -119,13 +119,17 @@ public class HeatwaveDatabase {
 	 * @param c
 	 * @return
 	 */
-	public static HeatwaveDatabase getInstance(Context c) {
+	public static HeatwaveDatabase getInstance() {
 		if (instance != null) return instance;
 		else {
-			instance = new HeatwaveDatabase(c);
+			instance = new HeatwaveDatabase(context);
 			instance.open();
 			return instance;
 		}
+	}
+	
+	public static void setContext(Context c) {
+		context = c;
 	}
 
 	/**

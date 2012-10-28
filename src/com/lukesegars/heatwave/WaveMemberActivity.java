@@ -1,6 +1,7 @@
 package com.lukesegars.heatwave;
 
 import java.util.ArrayList;
+import java.util.Collections;
 
 import com.lukesegars.heatwave.caches.ContactDataCache;
 
@@ -20,8 +21,6 @@ public class WaveMemberActivity extends ListActivity {
 	private static final String TAG = "WaveMemberActivity";
 	
 	private HeatwaveDatabase database;
-
-//	private ArrayList<String> contactNames;
 	private ArrayList<Long> contactIds;
 	
 	private Wave wave;
@@ -59,7 +58,7 @@ public class WaveMemberActivity extends ListActivity {
 		});
 		
 		long waveId = getIntent().getExtras().getLong("waveId");
-		database = HeatwaveDatabase.getInstance(this);
+		database = HeatwaveDatabase.getInstance();
 		wave = database.fetchWave(waveId);
 		
 		loadAdrContacts();
@@ -74,6 +73,7 @@ public class WaveMemberActivity extends ListActivity {
 		contactIds = new ArrayList<Long>();
 		
 		ArrayList<Contact> contacts = database.fetchContacts();
+		Collections.sort(contacts, new ContactComparator());
 		for (Contact c : contacts) {
 			contactNames.add(c.getName());
 			contactIds.add(c.getAdrId());
@@ -98,7 +98,6 @@ public class WaveMemberActivity extends ListActivity {
 	
 	public void updateWaveMembers(ArrayList<Long> actives, ArrayList<Long> inactives) {
 		ContactDataCache ctxCache = ContactDataCache.getInstance();
-//		ctxCache.invalidateAll();
 		
 		// For each user, update their contact record to indicate that
 		// they are in the current wave.
@@ -110,7 +109,6 @@ public class WaveMemberActivity extends ListActivity {
 			c.modify(cf);
 			
 			ctxCache.invalidateEntry(c.getAdrId());
-			ctxCache.addEntry(c.getAdrId(), c);
 		}
 
 		// Update the records of individuals who are no longer in the wave.
@@ -122,7 +120,7 @@ public class WaveMemberActivity extends ListActivity {
 			c.modify(cf);
 
 			ctxCache.invalidateEntry(c.getAdrId());
-			ctxCache.addEntry(c.getAdrId(), c);
+//			ctxCache.addEntry(c.getAdrId(), c);
 		}
 	}
 	

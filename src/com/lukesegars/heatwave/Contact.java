@@ -2,6 +2,7 @@ package com.lukesegars.heatwave;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 
 import android.content.ContentValues;
@@ -109,7 +110,7 @@ public class Contact {
 
 	private static void initDb() {
 		if (database == null) {
-			database = HeatwaveDatabase.getInstance(context);
+			database = HeatwaveDatabase.getInstance();
 		}
 	}
 	

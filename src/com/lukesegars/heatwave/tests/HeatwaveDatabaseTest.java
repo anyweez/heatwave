@@ -20,7 +20,7 @@ public class HeatwaveDatabaseTest extends AndroidTestCase {
 	
 	@Override
 	protected void setUp() throws Exception {
-		db = HeatwaveDatabase.getInstance(getContext());
+		db = HeatwaveDatabase.getInstance();
 		
 		super.setUp();
 	}

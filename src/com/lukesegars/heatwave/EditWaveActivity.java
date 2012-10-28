@@ -39,7 +39,8 @@ public class EditWaveActivity extends Activity {
 					database.removeWave(target);
 					// TODO: Can we do a partial invalidation here?  Not sure
 					// how easy or fast that would be...
-					ContactDataCache.getInstance().invalidateAll();
+					ContactDataCache.getInstance().invalidateByWave(target);
+//					ContactDataCache.getInstance().invalidateAll();
 					finish();
 				}
 			});
@@ -61,7 +62,7 @@ public class EditWaveActivity extends Activity {
 	}
 	
 	private void preloadWave(long waveId) {
-		database = HeatwaveDatabase.getInstance(getApplicationContext());
+		database = HeatwaveDatabase.getInstance();
 		target = database.fetchWave(waveId);
 		
 		// Update the UI.

@@ -1,5 +1,7 @@
 package com.lukesegars.heatwave;
 
+import com.lukesegars.heatwave.caches.ContactDataCache;
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -52,7 +54,9 @@ public class CallLogMonitor extends ContentObserver {
         	// occuring instances of the new activity should be closed (meaning the
         	// call log activity).
         	i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        	
+
+        	// TODO: If we can get the particular contact who was called we can only invalidate them.
+        	ContactDataCache.getInstance().invalidateAll();
         	// Launch!
         	base.startActivity(i);
         }
