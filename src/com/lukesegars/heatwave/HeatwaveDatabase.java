@@ -6,7 +6,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.lukesegars.heatwave.caches.ContactDataCache;
-import com.lukesegars.heatwave.caches.DataCache;
 import com.lukesegars.heatwave.caches.QueryDataCache;
 
 import android.content.ContentValues;
@@ -28,7 +27,7 @@ import android.util.Log;
 // FIXME: If Contact is added to HW, then merged with another contact (changing ID's) then ID is not adjusted.
 public class HeatwaveDatabase {
 	private static final String TAG = "HeatwaveDatabase";
-	private static final int DURATION_THRESHOLD = 5;
+	private static final int DURATION_THRESHOLD = 90;
 
 	// SQLite database helper (local class)
 	private HeatwaveOpenHelper dbHelper;
@@ -274,10 +273,6 @@ public class HeatwaveDatabase {
 	 * @return Contact object or null.
 	 */
 	public Contact fetchContact(long adrId) {
-		ContactDataCache ctxCache = ContactDataCache.getInstance();
-		// Check the cache.
-		if (ctxCache.entryExists(adrId)) return ctxCache.getEntry(adrId);
-		
 		// Get the list of contacts from the Heatwave database.
 		SQLiteQueryBuilder qBuilder = new SQLiteQueryBuilder();
 		qBuilder.setTables(HeatwaveOpenHelper.CONTACTS_TABLE_NAME);
@@ -300,7 +295,7 @@ public class HeatwaveDatabase {
 		
 		cf.setCid(cursor.getInt(0));
 		cf.setAdrId(cursor.getInt(1));
-		cf.setWave(fetchWave(cursor.getInt(2)));
+		cf.setWaveId(cursor.getInt(2));//fetchWave(cursor.getInt(2)));
 		cf.setLastCallId(cursor.getInt(3));
 		
 		cursor.close();
@@ -335,7 +330,7 @@ public class HeatwaveDatabase {
 		
 		// Clean up.
 		adrCursor.close();
-		ctxCache.addEntry(adrId, c);
+		c.getLatestTimestamp();
 		
 		return c;
 	}
@@ -452,6 +447,7 @@ public class HeatwaveDatabase {
 	 * @return
 	 */
 	public long updateTimestamp(Contact.Fields fields) {
+		Log.i(TAG, "Updating timestamp...");
 		long start = System.currentTimeMillis();
 		String phoneNumQry = getQueryPhoneNum(fields);
 		
@@ -536,15 +532,11 @@ public class HeatwaveDatabase {
 	 */
 	public ArrayList<Contact> fetchContacts() {
 		long start = System.currentTimeMillis();
-		ContactDataCache ctxCache = ContactDataCache.getInstance();
+//		ContactDataCache ctxCache = ContactDataCache.getInstance();
 		
 		// Check the cache.  If any entries are there, assume they're legit.  Whenever
 		// the contact list changes the cache will be invalidated by that method.
-		if (ctxCache.numEntries() > 0) {
-			Log.i(TAG, "Found data in cache.");
-			return ctxCache.getAllEntries();
-		}
-		
+
 		// Get the list of contacts from the Heatwave database.
 		SQLiteQueryBuilder qBuilder = new SQLiteQueryBuilder();
 		qBuilder.setTables(HeatwaveOpenHelper.CONTACTS_TABLE_NAME);
@@ -556,7 +548,7 @@ public class HeatwaveDatabase {
 		ArrayList<Contact> contacts = new ArrayList<Contact>();
 
 		if (cursor == null) return contacts;
-		
+
 		// Load all of the contacts.
 		cursor.moveToFirst();
 		while (!cursor.isAfterLast()) {
@@ -565,16 +557,16 @@ public class HeatwaveDatabase {
 			
 			cf.setCid(cursor.getInt(0));
 			cf.setAdrId(cursor.getInt(1));
-			cf.setWave(fetchWave(cursor.getInt(2)));
+			cf.setWaveId(cursor.getInt(2));
 
 			c.modify(cf, false);
-			contacts.add(c);
+			c.getLatestTimestamp();
 			
+			contacts.add(c);
 			cursor.moveToNext();
 		}
 		cursor.close();
 
-		Log.i(TAG, "# of contacts loaded: " + contacts.size());
 		// Build a string of all contact ID's to use in the IN clause below.
 		String adrIds = "(";
 		for (int i = 0; i < contacts.size(); i++) {
@@ -596,7 +588,7 @@ public class HeatwaveDatabase {
 			null);
 
 		if (adrCursor == null) return new ArrayList<Contact>();
-		
+
 		adrCursor.moveToFirst();
 		while (!adrCursor.isAfterLast()) {
 			long adrId = adrCursor.getLong(0);
@@ -614,7 +606,7 @@ public class HeatwaveDatabase {
 			adrCursor.moveToNext();
 		}
 		adrCursor.close();
-		
+
 		// Delete contacts that don't have names (meaning they don't have
 		// corresponding entries in the Android contact log).
 		for (int i = contacts.size() - 1; i >= 0; i--) {
@@ -623,13 +615,11 @@ public class HeatwaveDatabase {
 				Contact.delete(contacts.get(i).getAdrId());
 				contacts.remove(i);
 			}
-			else {
-				// Add the contact to the cache.
-				ctxCache.addEntry(contacts.get(i).getAdrId(), contacts.get(i));
-			}
 		}
 
-		Log.i(TAG, "Fetched " + contacts.size() + " contacts in " + (System.currentTimeMillis() - start) / 1000.0 + " seconds");
+		Log.i(TAG, "Fetched " + contacts.size() + " contacts from DB in " + 
+			(System.currentTimeMillis() - start) / 1000.0 + " seconds");
+		
 		return contacts;
 	}
 
@@ -673,7 +663,7 @@ public class HeatwaveDatabase {
 			new String[] { String.valueOf(target.getId()) });
 				
 		ContentValues cv = new ContentValues();
-		cv.put("wave", (Integer)null);
+		cv.put("wave", Contact.Fields.NO_WAVE);
 		
 		// Clear the foreign key pointing to the wave on all relevant contacts.
 		database.update(HeatwaveOpenHelper.CONTACTS_TABLE_NAME,

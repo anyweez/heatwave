@@ -2,8 +2,6 @@ package com.lukesegars.heatwave;
 
 import java.util.ArrayList;
 
-import com.lukesegars.heatwave.caches.ContactDataCache;
-
 import android.app.ListActivity;
 import android.app.SearchManager;
 import android.content.Intent;
@@ -114,34 +112,30 @@ public class SelectContactsActivity extends ListActivity {
 			android.R.layout.simple_list_item_multiple_choice, 
 			contactNames);
 		lv.setAdapter(adapter);
+		ArrayList<Contact> contacts = Contact.getAll();
 		
-		ArrayList<Long> actives = database.getActiveContactAdrIds();
-		Log.i(TAG, "ACTIVES: " + actives.size());
-		
-		// TODO: Optimize this.
+		ArrayList<Long> activeIds = new ArrayList<Long>();
+		for (Contact c : contacts) activeIds.add(c.getAdrId());
+
 		// For each active ID, check to see if the contact ID exists in the DB.
+		// TODO: Optimize this.
 		for (int i = 0; i < contactIds.size(); i++) {
-			if (actives.contains(contactIds.get(i))) lv.setItemChecked(i, true);
+			if (activeIds.contains(contactIds.get(i))) lv.setItemChecked(i, true);
 		}
 		
 		adapter.notifyDataSetChanged();
 	}
 
 	private void updateContacts(ArrayList<Long> actives, ArrayList<Long> inactives) {
-		// Invalidate the current contact cache because things are likely about to change.
-		ContactDataCache ctxCache = ContactDataCache.getInstance();
-		
 		// 1. Create a new Contact for each ID.  create() will not create
 		//    a record if one already exists for the user with this ID.
 		for (Long id : actives) {
-			Contact c = Contact.create(id, null);
-			ctxCache.addEntry(c.getAdrId(), c);
+			Contact.create(id, null);
 		}
 		
 		// 2. Delete all of the Contacts that are no longer on the list.
 		for (Long id : inactives) {
 			Contact.delete(id);
-			ctxCache.invalidateEntry(id);
 		}
 	}
 	

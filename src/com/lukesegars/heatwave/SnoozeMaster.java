@@ -35,6 +35,7 @@ public class SnoozeMaster {
 		// Update the local record as well so we don't need to query
 		// the database again.
 		snoozeLog.put(c.getAdrId(), timestamp);
+		c.resetTimestamp();
 	}
 	
 	public long latestSnooze(Contact c) {

@@ -69,16 +69,16 @@ public class WaveMemberActivity extends ListActivity {
 	 * possible to roll it into one of the pre-existing functions.
 	 */
 	private void loadAdrContacts() {
+		ArrayList<Contact> contacts = Contact.getAll();
 		ArrayList<String> contactNames = new ArrayList<String>();
 		contactIds = new ArrayList<Long>();
 		
-		ArrayList<Contact> contacts = database.fetchContacts();
 		Collections.sort(contacts, new ContactComparator());
 		for (Contact c : contacts) {
 			contactNames.add(c.getName());
 			contactIds.add(c.getAdrId());
 		}
-		
+
 		ListView lv = getListView();
 		// Configure the adapter for the ListView.
 		ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, 
@@ -92,6 +92,8 @@ public class WaveMemberActivity extends ListActivity {
 				lv.setItemChecked(i, true);
 			}			
 		}
+		
+		
 		
 		adapter.notifyDataSetChanged();
 	}

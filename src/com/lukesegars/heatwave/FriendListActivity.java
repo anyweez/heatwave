@@ -23,8 +23,10 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.Toast;
 
-import net.hockeyapp.android.CrashManager;
-import net.hockeyapp.android.UpdateManager;
+//import com.bugsense.trace.BugSenseHandler;
+
+//import net.hockeyapp.android.CrashManager;
+//import net.hockeyapp.android.UpdateManager;
 
 public class FriendListActivity extends ListActivity {
 	private static final String TAG = "FriendListActivity";
@@ -44,11 +46,13 @@ public class FriendListActivity extends ListActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        storeObjectContext();
+//        BugSenseHandler.initAndStartSession(getApplicationContext(), "24fa824c");
         setContentView(R.layout.activity_friend_list);
+        
+        storeObjectContext();
+        loadObjectCaches();
 
         ArrayList<Contact> contacts = new ArrayList<Contact>();
-        
         ContactArrayAdapter listAdapter = new ContactArrayAdapter(this,
         	R.layout.display_contact_row,
         	contacts);
@@ -56,7 +60,6 @@ public class FriendListActivity extends ListActivity {
         setListAdapter(listAdapter);
         
 		// Start call listener
-		clm.returnTo(this);
 		getApplicationContext().getContentResolver().registerContentObserver(
 			android.provider.CallLog.Calls.CONTENT_URI, 
 			true, 
@@ -79,8 +82,6 @@ public class FriendListActivity extends ListActivity {
         });
 		
 		registerForContextMenu(getListView());
-		// Hockey.net
-	    checkForUpdates();
     }
     
     @Override
@@ -90,7 +91,7 @@ public class FriendListActivity extends ListActivity {
     	// Update the list in case anything has changed.  This is now called
     	// for first load as well instead of calling in onStart() as well.
     	updateContactList();
-        checkForCrashes();
+//        checkForCrashes();
     }
     
     @Override
@@ -114,6 +115,7 @@ public class FriendListActivity extends ListActivity {
     	switch (item.getItemId()) {
     		case R.id.ctx_select_wave:
     			final ArrayList<Wave> waves = Wave.loadAll();
+    			Log.i(TAG, "# of waves: " + waves.size());
     			final String[] names = new String[waves.size()];
     			for (int i = 0; i < waves.size(); i++) names[i] = waves.get(i).getName();
     			
@@ -133,10 +135,6 @@ public class FriendListActivity extends ListActivity {
 							Contact.Fields fields = contextTarget.new Fields();
 							fields.setWave(selected);
 							contextTarget.modify(fields);
-							
-							// Update the cache.
-							ContactDataCache ctxCache = ContactDataCache.getInstance();
-							ctxCache.invalidateEntry(fields.getAdrId());
 							
 							ContactArrayAdapter adapter = (ContactArrayAdapter)getListAdapter();
 					    	adapter.sort(listSorter);
@@ -186,20 +184,31 @@ public class FriendListActivity extends ListActivity {
     }
     
     // Hockey.app
-    private void checkForCrashes() {
-    	CrashManager.register(this, "800a9d6afe09212f2190b77eec8ea168");
-    }
+//    private void checkForCrashes() {
+//    	CrashManager.register(this, "800a9d6afe09212f2190b77eec8ea168");
+//    }
     
-    private void checkForUpdates() {
-        // TODO: Remove this for store builds!
-    	UpdateManager.register(this, "800a9d6afe09212f2190b77eec8ea168");
-    }
+//    private void checkForUpdates() {
+//        // TODO: Remove this for store builds!
+//    	UpdateManager.register(this, "800a9d6afe09212f2190b77eec8ea168");
+//    }
     // end Hockey.app
     
     private void storeObjectContext() {
+    	HeatwaveDatabase.setContext(getApplicationContext());
     	Wave.setContext(getApplicationContext());
     	Contact.setContext(getApplicationContext());
-    	HeatwaveDatabase.setContext(getApplicationContext());
+    }
+    
+    private void loadObjectCaches() {
+    	Log.i(TAG, "Loading caches...");
+    	long start = System.currentTimeMillis();
+
+    	// Load the caches.
+    	Contact.getAll();
+    	Wave.loadAll();
+    	
+    	Log.i(TAG, "Finished in " + ((System.currentTimeMillis() - start) / 1000.0) + " seconds.");
     }
     
     @Override
@@ -215,8 +224,10 @@ public class FriendListActivity extends ListActivity {
     
     // TODO: Better to clear all and then re-sort?  Faster to diff then +/-?
     public void updateContactList() {
+    	Log.i(TAG, "Updating contact list...");
     	long start = System.currentTimeMillis();
     	
+    	Log.i(TAG, "  Contacts in cache: " + ContactDataCache.getInstance().numEntries());
     	ArrayList<Contact> contacts = Contact.getAll();
     	ContactArrayAdapter adapter = (ContactArrayAdapter) getListAdapter();
     	
@@ -226,7 +237,7 @@ public class FriendListActivity extends ListActivity {
     	// Read the latest timestamps for all contacts and add them to the list
     	// adapter.
     	for (Contact contact : contacts) {
-    		contact.getLatestTimestamp();
+    		contact.resetTimestamp();
     		adapter.add(contact);
     	}
     	

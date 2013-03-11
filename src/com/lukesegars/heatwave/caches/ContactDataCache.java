@@ -4,17 +4,11 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
-import android.util.Log;
-
 import com.lukesegars.heatwave.Contact;
-import com.lukesegars.heatwave.HeatwaveDatabase;
-import com.lukesegars.heatwave.Wave;
 
 public class ContactDataCache extends DataCache<Long, Contact> {
 	private static final String TAG = "ContactDataCache";
 	private static ContactDataCache instance = null;
-	
-	private HeatwaveDatabase db = HeatwaveDatabase.getInstance();
 	
 	public static ContactDataCache getInstance() {
 		if (instance == null) instance = new ContactDataCache();
@@ -26,9 +20,10 @@ public class ContactDataCache extends DataCache<Long, Contact> {
 	public ArrayList<Contact> getAllEntries() {
 		ArrayList<Contact> contacts = new ArrayList<Contact>();
 		Iterator<Entry<Long, Contact>> it = cache.entrySet().iterator();
-		
+
 		while (it.hasNext()) {
-			contacts.add(it.next().getValue());
+			Contact c = it.next().getValue();
+			contacts.add(c);
 		}
 		return contacts;
 	}
@@ -41,7 +36,7 @@ public class ContactDataCache extends DataCache<Long, Contact> {
 		super.invalidateEntry(key);
 		
 		// Store the new version.
-		if (reload) addEntry(key, db.fetchContact(key));
+		if (reload) addEntry(key, Contact.loadByAdrId(key));
 	}
 	
 	public void invalidateAll() { invalidateAll(true); }
@@ -51,39 +46,8 @@ public class ContactDataCache extends DataCache<Long, Contact> {
 		
 		// Reload and store new stuff.
 		if (reload) {
-			ArrayList<Contact> contacts = db.fetchContacts();
-			for (Contact c : contacts) {
-				addEntry(c.getAdrId(), c);
-			}
-		}
-	}
-	
-	public void invalidateByWave(Wave wave) { invalidateByWave(wave, true); }
-	
-	public void invalidateByWave(Wave wave, boolean reload) {
-		Iterator<Entry<Long, Contact>> it = cache.entrySet().iterator();
-		
-		ArrayList<Long> removed = new ArrayList<Long>();
-		// Invalidate those that are in the provided wave.
-		while (it.hasNext()) {
-			Entry<Long, Contact> entry = it.next();
-
-			if (entry.getValue().getWave() == wave) {
-				Log.i(TAG, "Invalidated user: " + entry.getValue().getName());
-				invalidateEntry(entry.getKey());
-				removed.add(entry.getValue().getAdrId());
-			}
-		}
-		
-		if (reload) {
-			// Re-add those that are supposed to be in the wave.
-			for (Long adrId : removed) {
-				Contact c = db.fetchContact(adrId);
-				if (c != null) {
-					Log.i(TAG, "Adding user: " + c.getName());
-					addEntry(c.getAdrId(), c);
-				}
-			}
+			ArrayList<Contact> contacts = Contact.getAll();
+			for (Contact c : contacts) addEntry(c.getAdrId(), c);
 		}
 	}
 }

@@ -1,10 +1,10 @@
 package com.lukesegars.heatwave;
 
+import java.util.ArrayList;
+import java.util.Map.Entry;
+
 import com.lukesegars.heatwave.caches.ContactDataCache;
 
-import android.app.Activity;
-import android.content.Context;
-import android.content.Intent;
 import android.database.ContentObserver;
 import android.os.Handler;
 import android.util.Log;
@@ -18,18 +18,12 @@ import android.util.Log;
  * This monitor is currently being bound before making a call and un
  */
 public class CallLogMonitor extends ContentObserver {
-	private Activity target = null;
-	
     public CallLogMonitor(Handler h) {
         super(h);
         
         Log.i("CallLogMonitor", "CLM running...");
     }
     
-    public void returnTo(Activity a) {
-    	target = a;
-    }
-
     @Override
     public boolean deliverSelfNotifications() {
         return true;
@@ -39,26 +33,11 @@ public class CallLogMonitor extends ContentObserver {
     public void onChange(boolean selfChange) {
         super.onChange(selfChange);
         
-        // If a target to return to has been provided, relaunch that intent.
-        // TODO: This currently isn't returning to TARGET but to the app base (ok).
-        if (target != null) {
-        	// Unregister self.  We'll rebind as needed.
-//            target.getApplicationContext().getContentResolver().unregisterContentObserver(this);
-
-            Context base = target.getBaseContext();
-        	
-        	Intent i = base.getPackageManager().getLaunchIntentForPackage(
-        		base.getPackageName());
-        	
-        	// CLEAR_TOP means that all activities between now and any previously
-        	// occuring instances of the new activity should be closed (meaning the
-        	// call log activity).
-        	i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-
-        	// TODO: If we can get the particular contact who was called we can only invalidate them.
-        	ContactDataCache.getInstance().invalidateAll();
-        	// Launch!
-        	base.startActivity(i);
-        }
+    	Log.i("CallLogMonitor", "Invalidating cache due to call activity.");
+    	// Invalidate and reload all contacts to get new timestamp data.
+    	ArrayList<Contact> contacts = ContactDataCache.getInstance().getAllEntries();
+    	for (Contact c : contacts) {
+    		c.resetTimestamp();
+    	}
     }
 }

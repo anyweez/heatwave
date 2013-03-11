@@ -2,6 +2,8 @@ package com.lukesegars.heatwave;
 
 import java.util.ArrayList;
 
+import com.lukesegars.heatwave.caches.WaveDataCache;
+
 import android.content.ContentValues;
 import android.content.Context;
 import android.util.Log;
@@ -10,6 +12,7 @@ public class Wave {
 	// The number of seconds per unit entered in the UI.  The UI currently
 	// asks users for wavelengths in days, which translates into 86400 seconds.
 	public static final int SECONDS_PER_UNIT = 86400;
+	private static WaveDataCache waveCache = WaveDataCache.getInstance();
 	
 	public class Fields {
 		private static final long DEFAULT_ID = -1;
@@ -39,59 +42,66 @@ public class Wave {
 		}
 	}
 
-	private static HeatwaveDatabase database;
+	private static HeatwaveDatabase database = null;
+	private Wave.Fields fields = new Wave.Fields();
 	private static Context context = null;
 	
-	private Wave.Fields fields = new Wave.Fields();
-	
-	private static void initDb() {
-		if (database == null) {
-			database = HeatwaveDatabase.getInstance();
-		}
-	}
+	protected boolean hasName() { return fields.hasName(); }
 
 	public static void setContext(Context c) {
 		context = c;
+		database = HeatwaveDatabase.getInstance();
 	}
-	
-	protected boolean hasName() { return fields.hasName(); }
 	
 	//////////////////////////////
 	/// Static factory methods ///
 	//////////////////////////////
 	public static Wave create(String name, int wl) {
-		initDb();
-
 		// If the wave already exists, return an instance of that
 		// object and do not create a new row in the database.
-		Wave exists = database.loadWaveByName(name);
-		if (exists != null) return exists;
+		ArrayList<Wave> waves = waveCache.getAllEntries();
+		for (Wave w : waves) {
+			if (w.getName().equals(name)) {
+				Log.i("Wave", "Loaded pre-existing wave " + name);
+				return w;
+			}
+		}
 		
 		Wave w = new Wave();
 		Wave.Fields wf = w.new Fields();
+
+		long id = database.addWave(w);
 		
 		wf.setName(name);
 		wf.setWavelength(wl);
+		wf.setId(id);
 
-		w.modify(wf, false);
-		long id = database.addWave(w);
+		// Modify and cache the object.  Then store in persistent storage.
+		w.modify(wf);
 
-		Wave.Fields wf2 = w.new Fields();
-		wf2.setId(id);
-		w.modify(wf2, false);
-		
 		return w;
 	}
 	
-	public static Wave load(int id) {
-		initDb();
-		
-		return database.fetchWave(id);
+	public static Wave load(long id) {
+		if (waveCache.entryExists(id)) return waveCache.getEntry(id);
+		else {
+			Wave wave = database.fetchWave(id);
+			waveCache.addEntry(wave.getId(), wave);
+			
+			return wave;
+		}
 	}
 	
 	public static ArrayList<Wave> loadAll() {
-		initDb();
-		return database.fetchWaves();
+		if (waveCache.numEntries() == 0) {
+			ArrayList<Wave> waves = database.fetchWaves();
+			
+			for (Wave w : waves) {
+				waveCache.addEntry(w.getId(), w);
+			}
+		}
+		
+		return waveCache.getAllEntries();
 	}
 	
 	public static Wave skeleton() { return new Wave(); }
@@ -112,11 +122,17 @@ public class Wave {
 	/// Public methods ///
 	//////////////////////
 	public void modify(Wave.Fields f, boolean updateDb) {
-		initDb();
 		fields.modify(f);
 		
 		// Update the database records if requested (default = true).
-		if (updateDb) database.updateWave(this);
+		if (updateDb) {
+			database.updateWave(this);
+			waveCache.invalidateEntry(getId());
+		}
+		else {
+			waveCache.invalidateEntry(getId(), false);
+			waveCache.addEntry(getId(), this);
+		}
 	}
 	
 	public void modify(Wave.Fields f) {
@@ -180,7 +196,7 @@ public class Wave {
 
 	@Override
 	public String toString() {
-		return "Wave '" + fields.getName() + 
-			"', wavelength: " + String.valueOf(fields.getWavelength());
+		return "[Wave name=" + fields.getName() + 
+			"', wavelength: " + String.valueOf(fields.getWavelength()) + "]";
 	}
 }

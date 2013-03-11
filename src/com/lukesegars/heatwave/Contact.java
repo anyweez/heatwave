@@ -2,8 +2,10 @@ package com.lukesegars.heatwave;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.Date;
+
+import com.lukesegars.heatwave.caches.ContactDataCache;
+import com.lukesegars.heatwave.caches.WaveDataCache;
 
 import android.content.ContentValues;
 import android.content.Context;
@@ -11,6 +13,8 @@ import android.util.Log;
 
 public class Contact {
 	private static final String TAG = "Contact";
+	private static ContactDataCache ctxCache = ContactDataCache.getInstance();
+	private static WaveDataCache waveCache = WaveDataCache.getInstance();
 	
 	/**
 	 * The Fields subclass is instantiated once for each Contact object.  It
@@ -26,16 +30,19 @@ public class Contact {
 		protected static final long DEFAULT_CALL_ID = -1;
 		protected static final String DEFAULT_NAME = "";
 		protected static final String DEFAULT_PHONE_NUM = "";
-		protected final Wave DEFAULT_WAVE = Wave.skeleton();
+		protected final long DEFAULT_WAVEID = -1;
+		public final static long NO_WAVE = -2;
 		
 		private long cid = DEFAULT_CID;
 		private long adrId = DEFAULT_ADRID;
 		private String name = DEFAULT_NAME;
-		private Wave wave = DEFAULT_WAVE;
+		private long waveId = DEFAULT_WAVEID;
 		private String phoneNum = DEFAULT_PHONE_NUM;
 		
 		private long lastCallTimestamp = DEFAULT_TIMESTAMP;
 		private long lastCallId = DEFAULT_CALL_ID;
+		
+		private WaveDataCache wCache = WaveDataCache.getInstance();
 		
 		public Fields() {}
 		
@@ -59,11 +66,11 @@ public class Contact {
 		 * 
 		 * @return
 		 */
-		public boolean hasWave() {
-			return wave != null && !DEFAULT_WAVE.equals(wave); 
-		}
-		public Wave getWave() { return wave; }
-		public void setWave(Wave w) { wave = w; }
+		public boolean hasWave() { return waveCache.getEntry(getWaveId()) != null; }
+		public long getWaveId() { return waveId; }
+		public Wave getWave() { return wCache.getEntry(waveId); }
+		public void setWave(Wave w) { waveId = (w != null) ? w.getId() : NO_WAVE; 	}
+		public void setWaveId(long w) { waveId = w; }
 		
 		public boolean hasPhoneNum() { return phoneNum != DEFAULT_PHONE_NUM; }
 		public String getPhoneNum() { 
@@ -83,6 +90,7 @@ public class Contact {
 		}
 		public void setPhoneNum(String pn) { phoneNum = pn; }
 		
+		public void resetTimestamp() { lastCallTimestamp = DEFAULT_TIMESTAMP; }
 		public boolean hasTimeStamp() { return lastCallTimestamp != DEFAULT_TIMESTAMP; }
 		public long getLatestTimestamp() {
 			if (!hasTimeStamp()) { lastCallTimestamp = database.updateTimestamp(this); }
@@ -97,9 +105,11 @@ public class Contact {
 			if (f.hasCid()) setCid(f.getCid());
 			if (f.hasAdrId()) setAdrId(f.getAdrId());
 			if (f.hasName()) setName(f.getName());
-			if (f.hasWave() || f.getWave() == null) setWave(f.getWave());
 			if (f.hasPhoneNum()) setPhoneNum(f.getPhoneNum());
 			if (f.hasLastCallId()) setLastCallId(f.getLastCallId());
+			
+			// If the wave is NO_WAVE or an actual wave value, update it.
+			if (f.getWaveId() != DEFAULT_WAVEID) setWaveId(f.getWaveId());
 		}
 	}
 	
@@ -108,14 +118,9 @@ public class Contact {
 	private static HeatwaveDatabase database = null;
 	private static Context context = null;
 
-	private static void initDb() {
-		if (database == null) {
-			database = HeatwaveDatabase.getInstance();
-		}
-	}
-	
 	public static void setContext(Context c) {
 		context = c;
+		database = HeatwaveDatabase.getInstance();
 	}
 	
 	/**
@@ -128,12 +133,9 @@ public class Contact {
 	 * @return
 	 */
 	public static Contact create(long adrId, Wave w) {
-		initDb();
-		
-		if (database.contactExists(adrId)) {
-			return Contact.loadByAdrId(adrId);
-		}
+		if (ctxCache.entryExists(adrId)) return ctxCache.getEntry(adrId);
 		else {
+			Log.i(TAG, "Loading contact from database.");
 			// Create the Contact object.
 			Contact c = Contact.skeleton();
 
@@ -146,13 +148,17 @@ public class Contact {
 			c.modify(cf, false);
 			
 			// Return contact object.
-			return database.addContact(c);
+			Contact contact = database.addContact(c);
+			
+			ctxCache.invalidateEntry(c.getAdrId(), false);
+			ctxCache.addEntry(contact.getAdrId(), contact);
+			
+			return contact;
 		}
 	}
 	
 	public static void delete(long adrId) {
-		initDb();
-		
+		ctxCache.invalidateEntry(adrId, false);
 		database.removeContact(adrId);
 	}
 	
@@ -167,32 +173,61 @@ public class Contact {
 	
 	// TODO: Add caching.
 	public static Contact loadByAdrId(long adrId) {
-		initDb();
-		
 		// Select record from database and return it.
-		return database.fetchContact(adrId);
+		if (ctxCache.entryExists(adrId)) return ctxCache.getEntry(adrId);
+		else {
+			Contact c = database.fetchContact(adrId);
+			if (c != null) ctxCache.addEntry(adrId, c);
+			return c;
+		}
 	}
 	
 	public static ArrayList<Contact> getAll() {
-		initDb();
-		return database.fetchContacts();
+		if (ctxCache.numEntries() == 0) {
+			Log.i(TAG, "Loading all contacts from database.");
+			ArrayList<Contact> contacts = database.fetchContacts();
+//			for (Contact c : contacts) {
+//			}
+		}
+		
+		return ctxCache.getAllEntries();
 	}
 	
 	public void modify(Contact.Fields f, boolean updateDb) {
-		initDb();
 		fields.modify(f);
 		
 		// Update the database records if requested (default = true).
-		if (updateDb) database.updateContact(this);
+		if (updateDb) {
+			database.updateContact(this);
+			ctxCache.invalidateEntry(getAdrId());
+		}
+		else {
+			// Is this necessary?  Depending on whether this and the object in the table
+			// are the same object.
+			ctxCache.invalidateEntry(getAdrId(), false);
+			ctxCache.addEntry(getAdrId(), this);
+		}
 	}
 	
 	public void modify(Contact.Fields f) { modify(f, true); }
+	
+	public void resetTimestamp() {
+		fields.resetTimestamp();
+		fields.getLatestTimestamp();
+	}
 	
 	////////////////////////////
 	/// Private constructors ///
 	////////////////////////////
 	
-	private Contact() {	 fields = new Contact.Fields(); }
+	private Contact() {	 
+		fields = new Contact.Fields(); 
+		
+		if (ctxCache == null) {
+			ctxCache = ContactDataCache.getInstance();
+			ctxCache.invalidateAll();
+		}
+	}
 	private Contact(Contact.Fields f) { fields = f; }
 	
 	///////////////////////////
@@ -211,7 +246,7 @@ public class Contact {
 		ContentValues cv = new ContentValues();
 
 		cv.put("uid", getAdrId());
-		cv.put("wave", (hasWave()) ? getWave().getId() : null);
+		cv.put("wave", (hasWave()) ? getWave().getId() : Fields.NO_WAVE);
 		cv.put("lastCallId", fields.getLastCallId());
 
 		return cv;
@@ -219,10 +254,12 @@ public class Contact {
 
 	@Override
 	public String toString() {
-		return fields.getName() + " [adr #" + fields.getAdrId() + "]";
+		return fields.getName() + " [adr #" + fields.getAdrId() + ", wave '" + fields.getWave() + "', wid=" + fields.getWaveId() + "]";
 	}
 	
-	public long getLatestTimestamp() { return fields.getLatestTimestamp(); }
+	public long getLatestTimestamp() { 
+		return fields.getLatestTimestamp(); 
+	}
 
 	public String getSubtext() {
 		// TODO: Streamline fetching of latest timestamp.  Currently being done

@@ -1,11 +1,12 @@
 package com.lukesegars.heatwave;
 
-import com.lukesegars.heatwave.caches.ContactDataCache;
+import com.lukesegars.heatwave.caches.WaveDataCache;
 
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.InputType;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -14,12 +15,15 @@ import android.widget.TextView;
 public class EditWaveActivity extends Activity {
 	private static final String TAG = "EditWaveActivity";
 	private HeatwaveDatabase database;
+	private WaveDataCache waveCache = null;
 	
 	private Wave target = null;
 	@Override
 	protected void onCreate(Bundle saved) {
 		super.onCreate(saved);
 		setContentView(R.layout.activity_edit_wave);
+
+		waveCache = WaveDataCache.getInstance();
 		
 		// Make it so that only numbers will be provided into the wave length
 		// field.
@@ -37,10 +41,9 @@ public class EditWaveActivity extends Activity {
 			btn.setOnClickListener(new View.OnClickListener() {
 				public void onClick(View v) {
 					database.removeWave(target);
-					// TODO: Can we do a partial invalidation here?  Not sure
-					// how easy or fast that would be...
-					ContactDataCache.getInstance().invalidateByWave(target);
-//					ContactDataCache.getInstance().invalidateAll();
+					// Invalidate the entry and don't try to reload it (since it's gone).
+					waveCache.invalidateEntry(target.getId(), false);
+					Log.i(TAG, "WAVE ENTRIES: " + waveCache.numEntries());
 					finish();
 				}
 			});
